@@ -26,7 +26,7 @@ public class User {
     private String last_name;
 
     @Column(name = "telegram_chat_id")
-    private long telegramChatId;
+    private Long telegramChatId;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

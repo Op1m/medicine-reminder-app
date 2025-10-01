@@ -22,9 +22,5 @@
 - [ ] Android приложение
 - [ ] Telegram Mini App
 
-## Запуск
-```bash
-mvn spring-boot:run
-
-Автор
+## Автор
 Op1m - начинающий Java Enterprise разработчик
