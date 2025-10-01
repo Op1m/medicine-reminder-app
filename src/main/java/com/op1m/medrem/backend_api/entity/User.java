@@ -93,4 +93,8 @@ public class User {
     public void setEmail (String email) {
         this.email = email;
     }
+
+    public Long getTelegramChatId () {return telegramChatId;}
+
+    public void setTelegramChatId (Long telegramChatId) {this.telegramChatId = telegramChatId;}
 }
