@@ -34,18 +34,18 @@ public class User {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    //@OneToMany(
-    //        mappedBy = "user",
-    //        cascade = CascadeType.ALL,
-    //        fetch = FetchType.LAZY
-    //)
+    @OneToMany(
+            mappedBy = "user",
+            cascade = CascadeType.ALL,
+            fetch = FetchType.LAZY
+    )
 
-    //private List<Reminder> reminders = new ArrayList<>();
+    private List<Reminder> reminders = new ArrayList<>();
 
-    //@PreUpdate
-    //public void preUpdate () {
-    //    this.updatedAt = LocalDateTime.now();
-    //}
+    @PreUpdate
+    public void preUpdate () {
+        this.updatedAt = LocalDateTime.now();
+    }
 
     @Override
     public String toString() {
