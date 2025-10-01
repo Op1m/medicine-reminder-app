@@ -5,9 +5,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
 public class MedicineReminderApiApplication {
-
-	public static void main(String[] args) {
+    public static void main(String[] args) {
 		SpringApplication.run(MedicineReminderApiApplication.class, args);
+        System.out.println("Репозитории готовы к работе!");
 	}
-
 }
