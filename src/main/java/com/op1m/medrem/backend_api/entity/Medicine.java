@@ -57,6 +57,16 @@ public class Medicine {
         this.updatedAt = LocalDateTime.now();
     }
 
+    public void deactivate() {
+        this.isActive = false;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void activate() {
+        this.isActive = true;
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public Long getId () {return  id;}
     public String getName () {return  name;}
     public String getDosage () {return dosage;}
