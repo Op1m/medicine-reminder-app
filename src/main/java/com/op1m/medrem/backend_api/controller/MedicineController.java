@@ -2,6 +2,8 @@ package com.op1m.medrem.backend_api.controller;
 
 import com.op1m.medrem.backend_api.entity.Medicine;
 import com.op1m.medrem.backend_api.service.MedicineService;
+import com.op1m.medrem.backend_api.dto.MedicineDTO;
+import com.op1m.medrem.backend_api.dto.DTOMapper;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 
 @RestController
@@ -19,32 +22,33 @@ public class MedicineController {
     private MedicineService medicineService;
 
     @PostMapping
-    public ResponseEntity<Medicine> createMedicine(@RequestBody MedicineCreateRequest request) {
+    public ResponseEntity<MedicineDTO> createMedicine(@RequestBody MedicineCreateRequest request) {
         Medicine medicine = medicineService.createMedicine(
                 request.getName(),
                 request.getDosage(),
                 request.getDescription(),
                 request.getInstructions()
         );
-
-        return new ResponseEntity<>(medicine, HttpStatus.CREATED);
+        MedicineDTO medicineDTO = DTOMapper.toMedicineDTO(medicine);
+        return new ResponseEntity<>(medicineDTO, HttpStatus.CREATED);
     }
 
     @GetMapping
-    public List<Medicine> getAllActiveMedicines() {
-        return medicineService.getAllActiveMedicines();
+    public List<MedicineDTO> getAllActiveMedicines() {
+        return medicineService.getAllActiveMedicines().stream().map(DTOMapper::toMedicineDTO).collect(Collectors.toList());
     }
 
     @GetMapping("/search")
-    public List<Medicine> searchMedicines(@RequestParam String name) {
-        return medicineService.searchMedicines(name);
+    public List<MedicineDTO> searchMedicines(@RequestParam String name) {
+        return medicineService.searchMedicines(name).stream().map(DTOMapper::toMedicineDTO).collect(Collectors.toList());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Medicine> getMedicineById(@PathVariable Long id) {
+    public ResponseEntity<MedicineDTO> getMedicineById(@PathVariable Long id) {
         Medicine medicine = medicineService.findById(id);
+        MedicineDTO medicineDTO = DTOMapper.toMedicineDTO(medicine);
         if(medicine != null) {
-            return new ResponseEntity<>(medicine, HttpStatus.OK);
+            return new ResponseEntity<>(medicineDTO, HttpStatus.OK);
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
@@ -61,16 +65,16 @@ public class MedicineController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Medicine> updateMedicine (@PathVariable Long id, @RequestBody MedicineUpdateRequest request) {
+    public ResponseEntity<MedicineDTO> updateMedicine (@PathVariable Long id, @RequestBody MedicineUpdateRequest request) {
         Medicine updatedMedicine = medicineService.updateMedicine( id,
                 request.getName(),
                 request.getDosage(),
                 request.getDescription(),
                 request.getInstructions()
         );
-
+        MedicineDTO medicineDTO = DTOMapper.toMedicineDTO(updatedMedicine);
         if(updatedMedicine != null) {
-            return new ResponseEntity<>(updatedMedicine, HttpStatus.OK);
+            return new ResponseEntity<>(medicineDTO, HttpStatus.OK);
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }

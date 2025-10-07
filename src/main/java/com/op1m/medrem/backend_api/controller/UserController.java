@@ -2,6 +2,8 @@ package com.op1m.medrem.backend_api.controller;
 
 import com.op1m.medrem.backend_api.entity.User;
 import com.op1m.medrem.backend_api.service.UserService;
+import com.op1m.medrem.backend_api.dto.UserDTO;
+import com.op1m.medrem.backend_api.dto.DTOMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,7 +18,7 @@ public class UserController {
     private UserService userService;
 
     @PostMapping("/register")
-    public ResponseEntity<User> registerUser(@RequestBody UserRegistrationRequest request) {
+    public ResponseEntity<UserDTO> registerUser(@RequestBody UserRegistrationRequest request) {
         if(userService.existByUsername(request.getUsername())) {
             return new ResponseEntity<>(HttpStatus.CONFLICT);
         }
@@ -31,26 +33,27 @@ public class UserController {
                 request.getEmail()
         );
 
-        return new ResponseEntity<>(newUser, HttpStatus.CREATED);
+        UserDTO userDTO = DTOMapper.toUserDTO(newUser);
+        return new ResponseEntity<>(userDTO, HttpStatus.CREATED);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable Long id) {
+    public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
         User user = userService.findById(id);
-
+        UserDTO userDTO = DTOMapper.toUserDTO(user);
         if(user != null) {
-            return new ResponseEntity<>(user, HttpStatus.OK);
+            return new ResponseEntity<>(userDTO, HttpStatus.OK);
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
 
     @PostMapping("/{userId}/link-telegram")
-    public ResponseEntity<User> linkTelegram (@PathVariable Long userId, @RequestBody TelegramLinkRequest request) {
+    public ResponseEntity<UserDTO> linkTelegram (@PathVariable Long userId, @RequestBody TelegramLinkRequest request) {
         User user = userService.linkTelegramAccount(userId, request.getTelegramChatId());
-
+        UserDTO userDTO = DTOMapper.toUserDTO(user);
         if(user != null) {
-            return new ResponseEntity<>(user, HttpStatus.OK);
+            return new ResponseEntity<>(userDTO, HttpStatus.OK);
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }

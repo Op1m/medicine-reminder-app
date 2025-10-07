@@ -2,6 +2,8 @@ package com.op1m.medrem.backend_api.controller;
 
 import com.op1m.medrem.backend_api.entity.Reminder;
 import com.op1m.medrem.backend_api.service.ReminderService;
+import com.op1m.medrem.backend_api.dto.DTOMapper;
+import com.op1m.medrem.backend_api.dto.ReminderDTO;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/reminders")
@@ -20,32 +23,33 @@ public class ReminderController {
     private ReminderService reminderService;
 
     @PostMapping
-    public ResponseEntity<Reminder> createReminder(@RequestBody ReminderCreateRequest request) {
+    public ResponseEntity<ReminderDTO> createReminder(@RequestBody ReminderCreateRequest request) {
         Reminder reminder = reminderService.createReminder(
                 request.getUserId(),
                 request.getMedicineId(),
                 request.getReminderTime(),
                 request.getDaysOfWeek()
         );
-        return new ResponseEntity<>(reminder, HttpStatus.OK);
+        ReminderDTO reminderDTO = DTOMapper.toReminderDTO(reminder);
+        return new ResponseEntity<>(reminderDTO, HttpStatus.OK);
     }
 
     @GetMapping("/user/{userId}")
-    public List<Reminder> getUserReminders(@PathVariable Long userId) {
-        return reminderService.getUserReminders(userId);
+    public List<ReminderDTO> getUserReminders(@PathVariable Long userId) {
+        return reminderService.getUserReminders(userId).stream().map(DTOMapper::toReminderDTO).collect(Collectors.toList());
     }
 
     @GetMapping("/user/{userId}/active")
-    public List<Reminder> getUserActiveReminders(@PathVariable Long userId) {
-        return reminderService.getUserActiveReminders(userId);
+    public List<ReminderDTO> getUserActiveReminders(@PathVariable Long userId) {
+        return reminderService.getUserActiveReminders(userId).stream().map(DTOMapper::toReminderDTO).collect(Collectors.toList());
     }
 
     @PatchMapping("/{reminderId}/toggle")
-    public ResponseEntity<Reminder> toggleReminder (@PathVariable Long reminderId, @RequestParam Boolean active) {
+    public ResponseEntity<ReminderDTO> toggleReminder (@PathVariable Long reminderId, @RequestParam Boolean active) {
         Reminder reminder = reminderService.toggleReminder(reminderId, active);
-
+        ReminderDTO reminderDTO = DTOMapper.toReminderDTO(reminder);
         if(reminder != null) {
-            return new ResponseEntity<>(reminder, HttpStatus.OK);
+            return new ResponseEntity<>(reminderDTO, HttpStatus.OK);
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
@@ -55,22 +59,23 @@ public class ReminderController {
     public ResponseEntity<Void> deleteReminder(@PathVariable Long reminderId) {
         boolean isDeleted = reminderService.deleteReminder(reminderId);
         if (isDeleted) {
-            return new ResponseEntity<>(HttpStatus.OK);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
 
-    @PutMapping("/due")
-    public List<Reminder> getDueReminders() {
-        return reminderService.getDueReminders();
+    @GetMapping("/due")
+    public List<ReminderDTO> getDueReminders() {
+        return reminderService.getDueReminders().stream().map(DTOMapper::toReminderDTO).collect(Collectors.toList());
     }
 
     @PutMapping("/{reminderId}/time")
-    public ResponseEntity<Reminder> updateReminderTime(@PathVariable Long reminderId, @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime newTime) {
+    public ResponseEntity<ReminderDTO> updateReminderTime(@PathVariable Long reminderId, @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime newTime) {
         Reminder reminder = reminderService.updateReminderTime(reminderId, newTime);
+        ReminderDTO reminderDTO = DTOMapper.toReminderDTO(reminder);
         if (reminder != null) {
-            return new ResponseEntity<>(reminder, HttpStatus.OK);
+            return new ResponseEntity<>(reminderDTO, HttpStatus.OK);
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
