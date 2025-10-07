@@ -1,7 +1,6 @@
 package com.op1m.medrem.backend_api.entity;
 
 import jakarta.persistence.*;
-import org.springframework.cglib.core.Local;
 
 import java.time.LocalTime;
 import  java.time.LocalDateTime;

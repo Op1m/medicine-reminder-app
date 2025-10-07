@@ -4,10 +4,14 @@ import com.op1m.medrem.backend_api.entity.Reminder;
 import com.op1m.medrem.backend_api.service.ReminderService;
 import com.op1m.medrem.backend_api.dto.DTOMapper;
 import com.op1m.medrem.backend_api.dto.ReminderDTO;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,7 +27,7 @@ public class ReminderController {
     private ReminderService reminderService;
 
     @PostMapping
-    public ResponseEntity<ReminderDTO> createReminder(@RequestBody ReminderCreateRequest request) {
+    public ResponseEntity<ReminderDTO> createReminder(@Valid @RequestBody ReminderCreateRequest request) {
         Reminder reminder = reminderService.createReminder(
                 request.getUserId(),
                 request.getMedicineId(),
@@ -82,12 +86,17 @@ public class ReminderController {
     }
 
     public static class ReminderCreateRequest {
+        @NotNull(message = "User ID обязателен")
         private Long userId;
+
+        @NotNull(message = "Medicine ID обязателен")
         private Long medicineId;
 
+        @NotNull(message = "Время напоминания обязательно")
         @DateTimeFormat(iso = DateTimeFormat.ISO.TIME)
         private LocalTime reminderTime;
 
+        @Pattern(regexp = "everyday|[1-7,]+", message = "Дни недели должны быть 'everyday' или цифрами через запятую (1-7)")
         private String daysOfWeek = "everyday";
 
         public Long getUserId() {return userId;}

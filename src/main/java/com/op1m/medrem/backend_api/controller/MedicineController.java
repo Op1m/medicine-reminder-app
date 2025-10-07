@@ -4,9 +4,12 @@ import com.op1m.medrem.backend_api.entity.Medicine;
 import com.op1m.medrem.backend_api.service.MedicineService;
 import com.op1m.medrem.backend_api.dto.MedicineDTO;
 import com.op1m.medrem.backend_api.dto.DTOMapper;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,7 +25,7 @@ public class MedicineController {
     private MedicineService medicineService;
 
     @PostMapping
-    public ResponseEntity<MedicineDTO> createMedicine(@RequestBody MedicineCreateRequest request) {
+    public ResponseEntity<MedicineDTO> createMedicine(@Valid @RequestBody MedicineCreateRequest request) {
         Medicine medicine = medicineService.createMedicine(
                 request.getName(),
                 request.getDosage(),
@@ -65,7 +68,7 @@ public class MedicineController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<MedicineDTO> updateMedicine (@PathVariable Long id, @RequestBody MedicineUpdateRequest request) {
+    public ResponseEntity<MedicineDTO> updateMedicine (@PathVariable Long id, @Valid @RequestBody MedicineUpdateRequest request) {
         Medicine updatedMedicine = medicineService.updateMedicine( id,
                 request.getName(),
                 request.getDosage(),
@@ -96,13 +99,22 @@ public class MedicineController {
         public void setDescription(String description) {this.description = description;}
 
         public String getInstructions() {return  instructions;}
-        public void setInstructions(String name) {this.instructions = instructions;}
+        public void setInstructions(String instructions) {this.instructions = instructions;}
     }
 
     public static class MedicineUpdateRequest {
+        @NotBlank(message = "Название лекарства обязательно")
+        @Size(min = 2, max = 100, message = "Название должно быть от 2 до 100 символов")
         private String name;
+
+        @NotBlank(message = "Дозировка обязательна")
+        @Size(max = 50, message = "Дозировка не более 50 символов")
         private String dosage;
+
+        @Size(max = 500, message = "Описание не более 500 символов")
         private String description;
+
+        @Size(max = 500, message = "Инструкции не более 500 символов")
         private String instructions;
 
         public String getName() {return  name;}

@@ -4,7 +4,11 @@ import com.op1m.medrem.backend_api.entity.User;
 import com.op1m.medrem.backend_api.service.UserService;
 import com.op1m.medrem.backend_api.dto.UserDTO;
 import com.op1m.medrem.backend_api.dto.DTOMapper;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Size;
 import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +22,7 @@ public class UserController {
     private UserService userService;
 
     @PostMapping("/register")
-    public ResponseEntity<UserDTO> registerUser(@RequestBody UserRegistrationRequest request) {
+    public ResponseEntity<UserDTO> registerUser(@Valid @RequestBody UserRegistrationRequest request) {
         if(userService.existByUsername(request.getUsername())) {
             return new ResponseEntity<>(HttpStatus.CONFLICT);
         }
@@ -60,8 +64,16 @@ public class UserController {
     }
 
     public static class UserRegistrationRequest {
+        @NotBlank(message = "Username обязателен")
+        @Size(min = 3, max = 50, message = "Username должен быть от 3 до 50 символов")
         private String username;
+
+        @NotBlank(message = "Username обязателен")
+        @Size(min = 6, message = "Password должен быть не менее 6 символов")
         private String password;
+
+        @Email(message = "Некорректный email адрес")
+        @NotBlank(message = "Email обязателен")
         private String email;
 
         public String getUsername() {return username;}
