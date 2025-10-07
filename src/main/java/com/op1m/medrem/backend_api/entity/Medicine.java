@@ -18,7 +18,7 @@ public class Medicine {
     private String instructions;
 
     @Column(name = "is_active")
-    private boolean isActive;
+    private boolean isActive = true;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

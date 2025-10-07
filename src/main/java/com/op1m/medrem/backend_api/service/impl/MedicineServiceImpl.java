@@ -68,6 +68,7 @@ public class MedicineServiceImpl implements MedicineService{
 
         if (medicine != null) {
             medicine.deactivate();
+            medicine.setActive(false);
             Medicine updatedMedicine = medicineRepository.save(medicine);
             System.out.println("✅ MedicineService: Лекарство деактивировано: " + updatedMedicine.getId());
 
