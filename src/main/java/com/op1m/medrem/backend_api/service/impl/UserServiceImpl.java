@@ -5,6 +5,7 @@ import com.op1m.medrem.backend_api.repository.UserRepository;
 import com.op1m.medrem.backend_api.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 import java.util.Optional;
@@ -13,6 +14,9 @@ import java.util.Optional;
 public class UserServiceImpl implements UserService  {
 
     private final UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Autowired
     public UserServiceImpl(UserRepository userRepository) {
@@ -29,7 +33,9 @@ public class UserServiceImpl implements UserService  {
             throw new RuntimeException("Пользователь с email '" + email + "' уже существует");
         }
 
-        User user = new User(username,password, email);
+        String encodedPassword = passwordEncoder.encode(password);
+
+        User user = new User(username,encodedPassword, email);
         User savedUser = userRepository.save(user);
 
         return savedUser;
