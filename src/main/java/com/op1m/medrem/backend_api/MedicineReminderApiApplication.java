@@ -7,6 +7,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class MedicineReminderApiApplication {
     public static void main(String[] args) {
 		SpringApplication.run(MedicineReminderApiApplication.class, args);
-        System.out.println("Репозитории готовы к работе!");
+        System.out.println("Сервис готов к работе!");
 	}
 }

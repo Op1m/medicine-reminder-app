@@ -7,6 +7,7 @@ import java.util.List;
 public interface ReminderService {
     Reminder createReminder(Long userId, Long medicineId, LocalTime reminderTime, String daysOfWeek);
     List<Reminder> getUserReminders(Long userId);
+    Reminder findById(Long reminderId);
     List<Reminder> getUserActiveReminders(Long userId);
     List<Reminder> getAllActiveReminders();
     List<Reminder> getDueReminders();

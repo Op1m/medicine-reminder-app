@@ -70,6 +70,17 @@ public class ReminderServiceImpl implements ReminderService{
     }
 
     @Override
+    public Reminder findById(Long reminderId) {
+        System.out.println("🔍 ReminderService: Поиск напоминания по ID: " + reminderId);
+
+        Reminder reminder = reminderRepository.findById(reminderId)
+                .orElseThrow(() -> new RuntimeException("❌ ReminderService: Напоминание с ID " + reminderId + " не найдено"));
+
+        System.out.println("✅ ReminderService: Напоминание найдено: " + reminder.getId());
+        return reminder;
+    }
+
+    @Override
     public List<Reminder> getUserActiveReminders(Long userId) {
         System.out.println("📋 ReminderService: Получение активных напоминаний пользователя: " + userId);
 

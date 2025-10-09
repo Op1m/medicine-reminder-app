@@ -1,5 +1,6 @@
 package com.op1m.medrem.backend_api.dto;
 
+import com.op1m.medrem.backend_api.entity.MedicineHistory;
 import com.op1m.medrem.backend_api.entity.User;
 import com.op1m.medrem.backend_api.entity.Medicine;
 import com.op1m.medrem.backend_api.entity.Reminder;
@@ -50,6 +51,20 @@ public class DTOMapper {
                 reminder.getDaysOfWeek(),
                 reminder.getCreatedAt(),
                 reminder.getUpdatedAt()
+        );
+    }
+
+    public static MedicineHistoryDTO toMedicineHistoryDTO(MedicineHistory history) {
+        if (history == null) return null;
+
+        return new MedicineHistoryDTO(
+                history.getId(),
+                toReminderDTO(history.getReminder()),
+                history.getScheduledTime(),
+                history.getTakenAt(),
+                history.getStatus(),
+                history.getNotes(),
+                history.getCreatedAt()
         );
     }
 }
