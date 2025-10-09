@@ -33,10 +33,16 @@ public class UserServiceImpl implements UserService  {
             throw new RuntimeException("Пользователь с email '" + email + "' уже существует");
         }
 
-        String encodedPassword = passwordEncoder.encode(password);
+        System.out.println("🔐 Создание пользователя: " + username);
+        System.out.println("🔑 Исходный пароль: " + password);
 
-        User user = new User(username,encodedPassword, email);
+        String encodedPassword = passwordEncoder.encode(password);
+        System.out.println("🔑 Закодированный пароль: " + encodedPassword);
+
+        User user = new User(username, encodedPassword, email);
         User savedUser = userRepository.save(user);
+
+        System.out.println("✅ Пользователь создан: " + savedUser.getId());
 
         return savedUser;
     }

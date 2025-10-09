@@ -110,7 +110,8 @@ public class ReminderServiceImpl implements ReminderService{
         System.out.println("🔔 ReminderService: Поиск напоминаний для отправки...");
 
         List<Reminder> dueReminders = new ArrayList<>();
-        List<Reminder> activeReminders = reminderRepository.findByIsActiveTrue();
+
+        List<Reminder> activeReminders = reminderRepository.findAllActiveWithUserAndMedicine();
 
         for (Reminder reminder : activeReminders) {
             if(shouldNotifyNow(reminder)) {

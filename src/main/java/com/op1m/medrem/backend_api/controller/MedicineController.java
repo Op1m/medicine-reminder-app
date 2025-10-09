@@ -5,6 +5,8 @@ import com.op1m.medrem.backend_api.service.MedicineService;
 import com.op1m.medrem.backend_api.dto.MedicineDTO;
 import com.op1m.medrem.backend_api.dto.DTOMapper;
 import jakarta.validation.Valid;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +34,11 @@ public class MedicineController {
                 request.getDescription(),
                 request.getInstructions()
         );
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        System.out.println("👤 Текущий пользователь: " + auth.getName());
+        System.out.println("🔐 Authorities: " + auth.getAuthorities());
+
         MedicineDTO medicineDTO = DTOMapper.toMedicineDTO(medicine);
         return new ResponseEntity<>(medicineDTO, HttpStatus.CREATED);
     }
