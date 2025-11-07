@@ -2,6 +2,8 @@ package com.op1m.medrem.backend_api.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "medicines")
@@ -25,6 +27,14 @@ public class Medicine {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @ManyToMany
+    @JoinTable(
+            name = "medicine_categories",
+            joinColumns = @JoinColumn(name = "medicine_id"),
+            inverseJoinColumns = @JoinColumn(name = "category_id")
+    )
+    private Set<Category> categories = new HashSet<>();
 
     public Medicine () {
         this.createdAt = LocalDateTime.now();
@@ -81,4 +91,17 @@ public class Medicine {
     public void setCreatedAt(LocalDateTime createdAt) {this.createdAt = createdAt;}
     public  void setUpdatedAt(LocalDateTime updatedAt) {this.updatedAt = updatedAt;}
     public void setActive(Boolean isActive) {this.isActive = isActive;}
+
+    public Set<Category> getCategories() { return categories; }
+    public void setCategories(Set<Category> categories) { this.categories = categories; }
+
+    public void addCategory(Category category) {
+        this.categories.add(category);
+        category.getMedicines().add(this);
+    }
+
+    public void removeCategory(Category category) {
+        this.categories.remove(category);
+        category.getMedicines().remove(this);
+    }
 }

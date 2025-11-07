@@ -15,7 +15,8 @@ public interface MedicineHistoryRepository extends JpaRepository<MedicineHistory
     List<MedicineHistory> findByReminderUserAndStatusOrderByScheduledTimeDesc(User user, MedicineStatus status);
     @Query("SELECT mh FROM MedicineHistory mh WHERE mh.reminder.user = :user AND mh.scheduledTime BETWEEN :start AND :end ORDER BY mh.scheduledTime DESC")
     List<MedicineHistory> findByUserAndPeriod(@Param("user") User user,
-                                                @Param("start") LocalDateTime start,
-                                                @Param("end") LocalDateTime end);
+                                              @Param("start") LocalDateTime start,
+                                              @Param("end") LocalDateTime end);
     List<MedicineHistory> findByStatusAndScheduledTimeBefore(MedicineStatus status, LocalDateTime scheduledTime);
+
 }

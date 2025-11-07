@@ -125,4 +125,83 @@ public class UserServiceImpl implements UserService  {
         return userRepository.existsByEmail(email);
     }
 
+    @Override
+    public User updateUser(Long id, String username, String email, String firstName, String lastName) {
+        System.out.println("✏️ UserService: Обновление пользователя: " + id);
+
+        User user = findById(id);
+        if (user == null) {
+            throw new RuntimeException("❌ UserService: Пользователь с ID " + id + " не найден");
+        }
+
+        if (!user.getUsername().equals(username) && existByUsername(username)) {
+            throw new RuntimeException("❌ UserService: Username '" + username + "' уже занят");
+        }
+
+        if (!user.getEmail().equals(email) && existByEmail(email)) {
+            throw new RuntimeException("❌ UserService: Email '" + email + "' уже используется");
+        }
+
+        user.setUsername(username);
+        user.setEmail(email);
+        user.setFirstName(firstName);
+        user.setLastName(lastName);
+
+        User updatedUser = userRepository.save(user);
+        System.out.println("✅ UserService: Пользователь обновлен: " + updatedUser.getId());
+        return updatedUser;
+    }
+
+    @Override
+    public void changePassword(Long userId, String oldPassword, String newPassword) {
+        System.out.println("🔐 UserService: Смена пароля для пользователя: " + userId);
+
+        User user = findById(userId);
+        if (user == null) {
+            throw new RuntimeException("❌ UserService: Пользователь не найден");
+        }
+
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new RuntimeException("❌ UserService: Текущий пароль неверен");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        System.out.println("✅ UserService: Пароль изменен для пользователя: " + userId);
+    }
+
+    @Override
+    public User getCurrentUser(String username) {
+        System.out.println("👤 UserService: Получение текущего пользователя: " + username);
+        return findByUsername(username);
+    }
+
+    @Override
+    public void deactivateUser(Long userId) {
+        System.out.println("🚫 UserService: Деактивация пользователя: " + userId);
+
+        User user = findById(userId);
+        if (user == null) {
+            throw new RuntimeException("❌ UserService: Пользователь не найден");
+        }
+
+        user.setActive(false);
+        userRepository.save(user);
+        System.out.println("✅ UserService: Пользователь деактивирован: " + userId);
+    }
+
+    @Override
+    public void activateUser(Long userId) {
+        System.out.println("✅ UserService: Активация пользователя: " + userId);
+
+        User user = findById(userId);
+        if (user == null) {
+            throw new RuntimeException("❌ UserService: Пользователь не найден");
+        }
+
+        user.setActive(true);
+        userRepository.save(user);
+        System.out.println("✅ UserService: Пользователь активирован: " + userId);
+    }
+
 }

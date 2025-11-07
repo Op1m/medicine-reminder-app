@@ -12,10 +12,12 @@ public class UserDTO {
     private Long telegramChatId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Boolean isActive;
 
     public UserDTO() {}
 
-    public UserDTO(Long id, String username, String email, String firstName, String lastName, Long telegramChatId, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public UserDTO(Long id, String username, String email, String firstName, String lastName,
+                   Long telegramChatId, LocalDateTime createdAt, LocalDateTime updatedAt, Boolean isActive) {
         this.id = id;
         this.username = username;
         this.email = email;
@@ -24,6 +26,7 @@ public class UserDTO {
         this.telegramChatId = telegramChatId;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.isActive = isActive;
     }
 
     public Long getId() { return id; }
@@ -49,4 +52,7 @@ public class UserDTO {
 
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public Boolean getIsActive() { return isActive; }
+    public void setIsActive(Boolean isActive) { this.isActive = isActive; }
 }

@@ -34,6 +34,10 @@ public class User {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "is_active")
+    private Boolean isActive = true;
+
+
     @OneToMany(
             mappedBy = "user",
             cascade = CascadeType.ALL,
@@ -126,4 +130,7 @@ public class User {
     public LocalDateTime getUpdatedAt () {return updatedAt;}
     public void setCreatedAt (LocalDateTime createdAt) {this.createdAt = createdAt;}
     public void setUpdatedAt (LocalDateTime updatedAt) {this.updatedAt = updatedAt;}
+
+    public Boolean getActive() { return isActive; }
+    public void setActive(Boolean active) { isActive = active; }
 }

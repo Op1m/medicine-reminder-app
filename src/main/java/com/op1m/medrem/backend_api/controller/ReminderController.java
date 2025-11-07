@@ -85,6 +85,28 @@ public class ReminderController {
         }
     }
 
+    @PutMapping("/{reminderId}")
+    public ResponseEntity<ReminderDTO> updateReminder(
+            @PathVariable Long reminderId,
+            @RequestBody ReminderUpdateRequest request) {
+
+        try {
+            Reminder reminder = reminderService.updateReminder(
+                    reminderId,
+                    request.getMedicineId(),
+                    request.getReminderTime(),
+                    request.getDaysOfWeek()
+            );
+
+            ReminderDTO reminderDTO = DTOMapper.toReminderDTO(reminder);
+            return new ResponseEntity<>(reminderDTO, HttpStatus.OK);
+
+        } catch (RuntimeException e) {
+            System.out.println("❌ ReminderController: Ошибка обновления: " + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+
     public static class ReminderCreateRequest {
         @NotNull(message = "User ID обязателен")
         private Long userId;
@@ -110,5 +132,23 @@ public class ReminderController {
 
         public String getDaysOfWeek() {return daysOfWeek;}
         public void setDaysOfWeek(String daysOfWeek) {this.daysOfWeek = daysOfWeek;}
+    }
+
+    public static class ReminderUpdateRequest {
+        private Long medicineId;
+
+        @DateTimeFormat(iso = DateTimeFormat.ISO.TIME)
+        private LocalTime reminderTime;
+
+        private String daysOfWeek = "everyday";
+
+        public Long getMedicineId() { return medicineId; }
+        public void setMedicineId(Long medicineId) { this.medicineId = medicineId; }
+
+        public LocalTime getReminderTime() { return reminderTime; }
+        public void setReminderTime(LocalTime reminderTime) { this.reminderTime = reminderTime; }
+
+        public String getDaysOfWeek() { return daysOfWeek; }
+        public void setDaysOfWeek(String daysOfWeek) { this.daysOfWeek = daysOfWeek; }
     }
 }

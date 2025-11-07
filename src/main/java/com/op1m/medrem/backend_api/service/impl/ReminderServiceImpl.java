@@ -194,4 +194,31 @@ public class ReminderServiceImpl implements ReminderService{
 
         return daysOfWeek.contains(String.valueOf(currentDay));
     }
+
+    @Override
+    public Reminder updateReminder(Long reminderId, Long medicineId, LocalTime reminderTime, String daysOfWeek) {
+        System.out.println("✏️ ReminderService: Обновление напоминания: " + reminderId);
+
+        // Находим существующее напоминание
+        Reminder reminder = reminderRepository.findById(reminderId)
+                .orElseThrow(() -> new RuntimeException("❌ ReminderService: Напоминание с ID " + reminderId + " не найдено"));
+
+        // Проверяем лекарство
+        Medicine medicine = medicineService.findById(medicineId);
+        if (medicine == null) {
+            throw new RuntimeException("❌ ReminderService: Лекарство с ID " + medicineId + " не найдено");
+        }
+
+        // Обновляем поля
+        reminder.setMedicine(medicine);
+        reminder.setReminderTime(reminderTime);
+        if (daysOfWeek != null) {
+            reminder.setDaysOfWeek(daysOfWeek);
+        }
+
+        Reminder updatedReminder = reminderRepository.save(reminder);
+        System.out.println("✅ ReminderService: Напоминание обновлено: " + updatedReminder.getId());
+
+        return updatedReminder;
+    }
 }

@@ -12,4 +12,9 @@ public interface UserService {
     User linkTelegramAccount(Long userId, Long telegramChatId);
     boolean existByUsername(String username);
     boolean existByEmail(String email);
+    User updateUser(Long id, String username, String email, String firstName, String lastName);
+    void changePassword(Long userId, String oldPassword, String newPassword);
+    User getCurrentUser(String username);
+    void deactivateUser(Long userId);
+    void activateUser(Long userId);
 }

@@ -4,7 +4,12 @@ import com.op1m.medrem.backend_api.entity.MedicineHistory;
 import com.op1m.medrem.backend_api.entity.User;
 import com.op1m.medrem.backend_api.entity.Medicine;
 import com.op1m.medrem.backend_api.entity.Reminder;
+import com.op1m.medrem.backend_api.entity.Category;
 import org.springframework.stereotype.Component;
+
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 public class DTOMapper {
@@ -19,7 +24,8 @@ public class DTOMapper {
                 user.getLastName(),
                 user.getTelegramChatId(),
                 user.getCreatedAt(),
-                user.getUpdatedAt()
+                user.getUpdatedAt(),
+                user.getActive()
         );
 
     }
@@ -65,6 +71,40 @@ public class DTOMapper {
                 history.getStatus(),
                 history.getNotes(),
                 history.getCreatedAt()
+        );
+    }
+
+    public static CategoryDTO toCategoryDTO(Category category) {
+        if (category == null) return null;
+
+        Set<MedicineDTO> medicineDTOs = category.getMedicines() != null ?
+                category.getMedicines().stream()
+                        .map(DTOMapper::toMedicineDTO)
+                        .collect(Collectors.toSet()) :
+                new HashSet<>();
+
+        return new CategoryDTO(
+                category.getId(),
+                category.getName(),
+                category.getDescription(),
+                category.getIsActive(),
+                category.getCreatedAt(),
+                category.getUpdatedAt(),
+                medicineDTOs
+        );
+    }
+
+    public static CategoryDTO toCategoryDTOSimple(Category category) {
+        if (category == null) return null;
+
+        return new CategoryDTO(
+                category.getId(),
+                category.getName(),
+                category.getDescription(),
+                category.getIsActive(),
+                category.getCreatedAt(),
+                category.getUpdatedAt(),
+                null // Не включаем medicines для простых DTO
         );
     }
 }

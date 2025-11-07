@@ -15,4 +15,5 @@ public interface ReminderService {
     Reminder updateReminderTime(Long reminderId, LocalTime newTime);
     boolean deleteReminder(Long reminderId);
     boolean shouldNotifyNow(Reminder reminder);
+    Reminder updateReminder(Long reminderId, Long medicineId, LocalTime reminderTime, String daysOfWeek);
 }
