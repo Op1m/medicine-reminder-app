@@ -29,7 +29,8 @@ data class User(
 data class UserRegistrationRequest(
     val username: String,
     val password: String,
-    val email: String
+    val email: String,
+    val firstName: String? = null
 )
 
 data class UserUpdateRequest(

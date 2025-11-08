@@ -17,6 +17,7 @@
         android:layout_marginBottom="60dp" />
 
     <LinearLayout
+        android:id="@+id/formContainer"
         android:layout_width="300dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
@@ -53,6 +54,16 @@
             android:layout_marginBottom="16dp"
             android:padding="12dp"
             android:background="#FFFFFF" />
+
+        <EditText
+            android:id="@+id/etFirstName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Ваше имя"
+            android:layout_marginBottom="16dp"
+            android:padding="12dp"
+            android:background="#FFFFFF"
+            android:visibility="gone" />
 
         <EditText
             android:id="@+id/etPassword"
