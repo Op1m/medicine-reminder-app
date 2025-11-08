@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Medicine Reminder</string>
+    <string name="login">Вход</string>
+    <string name="register">Регистрация</string>
+    <string name="welcome">Добро пожаловать!</string>
+    <string name="logout">Выйти</string>
+    <string name="no_account">Нет аккаунта? Зарегистрироваться</string>
+    <string name="have_account">Уже есть аккаунт? Войти</string>
+</resources>
