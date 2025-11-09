@@ -10,10 +10,42 @@
     android:fitsSystemWindows="true">
 
     <TextView
+        android:id="@+id/tv_pillo"
+        android:layout_width="0dp"
+        android:layout_height="80dp"
+        android:layout_marginStart="30dp"
+        android:layout_marginTop="88dp"
+        android:layout_marginEnd="30dp"
+        android:fontFamily="@font/fira_sans"
+        android:gravity="center"
+        android:text="PILLO"
+        android:textColor="#3FA1FF"
+        android:textSize="55sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <ImageView
+        android:id="@+id/iv_logo"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:layout_marginTop="20dp"
+        android:contentDescription="Логотип"
+        android:gravity="center"
+        android:src="@drawable/logo"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.497"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_pillo"
+        app:tint="#3FA1FF" />
+
+    <TextView
         android:id="@+id/tv_greeting"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="340dp"
+        android:layout_marginTop="432dp"
         android:fontFamily="@font/fira_sans"
         android:gravity="center"
         android:lineSpacingExtra="2dp"
@@ -30,7 +62,7 @@
         android:id="@+id/lets_start"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="400dp"
+        android:layout_marginTop="492dp"
         android:fontFamily="@font/fira_sans"
         android:gravity="center"
         android:lineSpacingExtra="2dp"
@@ -48,7 +80,7 @@
         android:layout_width="170dp"
         android:layout_height="40dp"
         android:layout_marginStart="48dp"
-        android:layout_marginTop="48dp"
+        android:layout_marginTop="44dp"
         android:layout_marginEnd="48dp"
         android:background="@drawable/btn_primary"
         android:fontFamily="@font/fira_sans_bold"
@@ -59,7 +91,7 @@
         app:backgroundTint="@null"
         app:cornerRadius="10dp"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.503"
+        app:layout_constraintHorizontal_bias="0.496"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/lets_start" />
 
@@ -67,9 +99,7 @@
         android:id="@+id/btn_sign_up"
         android:layout_width="170dp"
         android:layout_height="40dp"
-        android:layout_marginStart="0dp"
-        android:layout_marginTop="20dp"
-        android:layout_marginEnd="0dp"
+        android:layout_marginTop="16dp"
         android:background="@drawable/btn_sign_up"
         android:fontFamily="@font/fira_sans_bold"
         android:text="Зарегистрироваться"
@@ -79,39 +109,8 @@
         app:backgroundTint="@null"
         app:cornerRadius="10dp"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.496"
+        app:layout_constraintHorizontal_bias="0.497"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/btn_sign_in" />
-
-    <ImageView
-        android:id="@+id/iv_logo"
-        android:layout_width="410dp"
-        android:layout_height="250dp"
-        android:contentDescription="Логотип"
-        android:src="@drawable/logo"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toUpOf="@id/tv_greeting"
-        app:tint="#3FA1FF"
-        tools:layout_editor_absoluteY="90dp" />
-
-    <TextView
-        android:id="@+id/tv_pillo"
-        android:layout_width="0dp"
-        android:layout_height="80dp"
-        android:layout_marginStart="30dp"
-        android:layout_marginEnd="30dp"
-        android:fontFamily="@font/fira_sans"
-        android:gravity="center"
-        android:text="PILLO"
-        android:textColor="#3FA1FF"
-        android:textSize="55sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent"
-        tools:layout_editor_absoluteY="53dp" />
-
 
 </androidx.constraintlayout.widget.ConstraintLayout>

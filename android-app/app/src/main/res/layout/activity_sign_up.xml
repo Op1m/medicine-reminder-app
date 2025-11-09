@@ -11,7 +11,7 @@
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/top_panel"
-        android:layout_width="376dp"
+        android:layout_width="420dp"
         android:layout_height="101dp"
         android:layout_marginStart="-16dp"
         android:layout_marginEnd="-16dp"
@@ -39,7 +39,7 @@
             android:id="@+id/top_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
+            android:layout_marginTop="36dp"
             android:fontFamily="@font/fira_sans"
             android:gravity="center"
             android:text="Новый пользователь"
@@ -47,11 +47,9 @@
             android:textSize="20sp"
             android:textStyle="bold"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.0"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
-
 
     <ImageView
         android:id="@+id/iv_avatar_preview"
@@ -72,13 +70,13 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
         android:overScrollMode="never"
-        app:layout_constraintTop_toBottomOf="@id/iv_avatar_preview"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintTop_toBottomOf="@id/iv_avatar_preview">
 
         <LinearLayout
             android:id="@+id/ll_avatars"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center"
@@ -156,183 +154,180 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="12dp"
         android:fontFamily="@font/fira_sans"
         android:text="Имя"
         android:textColor="#263238"
         android:textSize="14sp"
         android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_margin="12dp"
         app:layout_constraintTop_toBottomOf="@id/hsv_avatars" />
 
     <EditText
         android:id="@+id/et_name"
-        android:layout_width="350dp"
+        android:layout_width="0dp"
         android:layout_height="52dp"
         android:layout_marginTop="4dp"
         android:layout_marginStart="32dp"
         android:layout_marginEnd="32dp"
         android:background="@drawable/input_bg_selector"
+        android:fontFamily="@font/fira_sans"
+        android:hint="Введите имя"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
-        android:hint="Введите имя"
         android:textColor="#263238"
         android:textSize="15sp"
-        android:fontFamily="@font/fira_sans"
-        app:layout_constraintTop_toBottomOf="@id/label_name"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintTop_toBottomOf="@id/label_name" />
 
     <TextView
         android:id="@+id/label_login"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="12dp"
         android:fontFamily="@font/fira_sans"
         android:text="Логин"
         android:textColor="#263238"
         android:textSize="14sp"
         android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_margin="12dp"
-        app:layout_constraintTop_toBottomOf="@+id/et_name" />
+        app:layout_constraintTop_toBottomOf="@id/et_name" />
 
     <EditText
         android:id="@+id/et_login"
-        android:layout_width="350dp"
+        android:layout_width="0dp"
         android:layout_height="52dp"
         android:layout_marginTop="4dp"
         android:layout_marginStart="32dp"
         android:layout_marginEnd="32dp"
         android:background="@drawable/input_bg_selector"
+        android:fontFamily="@font/fira_sans"
+        android:hint="Введите логин"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
-        android:hint="Введите логин"
         android:textColor="#263238"
         android:textSize="15sp"
-        android:fontFamily="@font/fira_sans"
-        app:layout_constraintTop_toBottomOf="@id/label_login"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintTop_toBottomOf="@id/label_login" />
 
     <TextView
         android:id="@+id/label_email"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="12dp"
         android:fontFamily="@font/fira_sans"
         android:text="Email"
         android:textColor="#263238"
         android:textSize="14sp"
         android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_margin="12dp"
-        app:layout_constraintTop_toBottomOf="@+id/et_login" />
+        app:layout_constraintTop_toBottomOf="@id/et_login" />
 
     <EditText
         android:id="@+id/et_email"
-        android:layout_width="350dp"
+        android:layout_width="0dp"
         android:layout_height="48dp"
         android:layout_marginTop="4dp"
         android:layout_marginStart="32dp"
         android:layout_marginEnd="32dp"
         android:background="@drawable/input_bg_selector"
+        android:fontFamily="@font/fira_sans"
+        android:hint="Введите email"
+        android:inputType="textEmailAddress"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
-        android:hint="Введите email"
         android:textColor="#263238"
         android:textSize="15sp"
-        android:fontFamily="@font/fira_sans"
-        app:layout_constraintTop_toBottomOf="@id/label_email"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintTop_toBottomOf="@id/label_email" />
 
     <TextView
         android:id="@+id/label_password"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="12dp"
         android:fontFamily="@font/fira_sans"
         android:text="Пароль"
         android:textColor="#263238"
         android:textSize="14sp"
         android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_margin="12dp"
-        app:layout_constraintTop_toBottomOf="@+id/et_email" />
+        app:layout_constraintTop_toBottomOf="@id/et_email" />
 
     <EditText
         android:id="@+id/et_password"
-        android:layout_width="350dp"
+        android:layout_width="0dp"
         android:layout_height="48dp"
         android:layout_marginTop="4dp"
         android:layout_marginStart="32dp"
         android:layout_marginEnd="32dp"
         android:background="@drawable/input_bg_selector"
+        android:fontFamily="@font/fira_sans"
+        android:hint="Введите пароль"
+        android:inputType="textPassword"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
-        android:hint="Введите пароль"
         android:textColor="#263238"
         android:textSize="15sp"
-        android:fontFamily="@font/fira_sans"
-        app:layout_constraintTop_toBottomOf="@id/label_password"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintTop_toBottomOf="@id/label_password" />
 
     <TextView
         android:id="@+id/label_dob"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="12dp"
         android:fontFamily="@font/fira_sans"
         android:text="Дата рождения"
         android:textColor="#263238"
         android:textSize="14sp"
         android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_margin="12dp"
-        app:layout_constraintTop_toBottomOf="@+id/et_password" />
+        app:layout_constraintTop_toBottomOf="@id/et_password" />
 
     <EditText
         android:id="@+id/et_dob"
-        android:layout_width="350dp"
+        android:layout_width="0dp"
         android:layout_height="48dp"
         android:layout_marginTop="4dp"
         android:layout_marginStart="32dp"
         android:layout_marginEnd="32dp"
         android:background="@drawable/input_bg_selector"
+        android:fontFamily="@font/fira_sans"
+        android:hint="ДД.ММ.ГГГГ"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
-        android:hint="ДД.ММ.ГГГГ"
         android:textColor="#263238"
         android:textSize="15sp"
-        android:fontFamily="@font/fira_sans"
-        app:layout_constraintTop_toBottomOf="@id/label_dob"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintTop_toBottomOf="@id/label_dob" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_add_user"
         android:layout_width="0dp"
         android:layout_height="44dp"
-        android:layout_marginTop="14dp"
+        android:layout_marginTop="24dp"
         android:layout_marginStart="48dp"
         android:layout_marginEnd="48dp"
+        android:background="@drawable/btn_primary"
+        android:fontFamily="@font/fira_sans"
         android:text="Создать пользователя"
         android:textAllCaps="false"
         android:textColor="#FFFFFF"
         android:textSize="14sp"
-        android:fontFamily="@font/fira_sans"
-        app:cornerRadius="10dp"
         app:backgroundTint="@null"
-        android:background="@drawable/btn_primary"
-        app:layout_constraintTop_toBottomOf="@id/et_dob"
+        app:cornerRadius="10dp"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintTop_toBottomOf="@id/et_dob" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
