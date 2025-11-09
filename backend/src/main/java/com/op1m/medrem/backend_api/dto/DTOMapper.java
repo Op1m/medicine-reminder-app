@@ -104,7 +104,7 @@ public class DTOMapper {
                 category.getIsActive(),
                 category.getCreatedAt(),
                 category.getUpdatedAt(),
-                null // Не включаем medicines для простых DTO
+                null
         );
     }
 }

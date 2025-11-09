@@ -32,7 +32,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/users/me/**").authenticated()
                         .anyRequest().authenticated()
                 )
-                .userDetailsService(userDetailsService(userService)) // 👈 Используем ВАШИХ пользователей
+                .userDetailsService(userDetailsService(userService))
                 .httpBasic(httpBasic -> {});
         return security.build();
     }
@@ -40,13 +40,10 @@ public class SecurityConfig {
     @Bean
     public UserDetailsService userDetailsService(UserService userService) {
         return username -> {
-            System.out.println("=== SPRING SECURITY AUTH ===");
-            System.out.println("🔐 Попытка аутентификации: " + username);
 
             com.op1m.medrem.backend_api.entity.User user = userService.findByUsername(username);
 
             if (user == null) {
-                System.out.println("❌ Пользователь не найден в БД: " + username);
                 throw new UsernameNotFoundException("User not found: " + username);
             }
 
