@@ -9,7 +9,6 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.op1m.medrem.android.R
 import com.op1m.medrem.android.data.api.RetrofitClient
-import com.op1m.medrem.android.data.model.LoginRequest
 import com.op1m.medrem.android.data.model.UserRegistrationRequest
 import com.op1m.medrem.android.ui.main.MainActivity
 import kotlinx.coroutines.CoroutineScope
@@ -34,7 +33,7 @@ class LoginActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_login)
+        setContentView(R.layout.activity_sign_in)
 
         initViews()
         setupClickListeners()
