@@ -52,6 +52,9 @@ dependencies {
 
     implementation ("com.google.code.gson:gson:2.8.9")
 
+    implementation ("org.threeten:threetenbp:1.6.8:no-tzdb")
+    implementation ("com.jakewharton.threetenabp:threetenabp:1.4.6")
+
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.0")
 
     testImplementation ("junit:junit:4.13.2")

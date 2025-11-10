@@ -41,15 +41,15 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun initViews() {
-        etEmail = findViewById(R.id.etEmail)
-        etFirstName = findViewById(R.id.etFirstName)
-        etUsername = findViewById(R.id.etUsername)
-        etPassword = findViewById(R.id.etPassword)
-        etConfirmPassword = findViewById(R.id.etConfirmPassword)
-        btnAction = findViewById(R.id.btnAction)
-        tvSwitchForm = findViewById(R.id.tvSwitchForm)
-        tvFormTitle = findViewById(R.id.tvFormTitle)
-        progressBar = findViewById(R.id.progressBar)
+        //etEmail = findViewById(R.id.etEmail)
+        //etFirstName = findViewById(R.id.etFirstName)
+        //etUsername = findViewById(R.id.etUsername)
+        //etPassword = findViewById(R.id.etPassword)
+        //etConfirmPassword = findViewById(R.id.etConfirmPassword)
+        //btnAction = findViewById(R.id.btnAction)
+        //tvSwitchForm = findViewById(R.id.tvSwitchForm)
+        //tvFormTitle = findViewById(R.id.tvFormTitle)
+        //progressBar = findViewById(R.id.progressBar)
     }
 
     private fun setupClickListeners() {
@@ -319,13 +319,13 @@ class LoginActivity : AppCompatActivity() {
     private fun showLoading() {
         progressBar.visibility = View.VISIBLE
         btnAction.isEnabled = false
-        findViewById<View>(R.id.formContainer)?.animate()?.alpha(0.7f)?.setDuration(300)?.start()
+        //findViewById<View>(R.id.formContainer)?.animate()?.alpha(0.7f)?.setDuration(300)?.start()
     }
 
     private fun hideLoading() {
         progressBar.visibility = View.GONE
         btnAction.isEnabled = true
-        findViewById<View>(R.id.formContainer)?.animate()?.alpha(1f)?.setDuration(300)?.start()
+        //findViewById<View>(R.id.formContainer)?.animate()?.alpha(1f)?.setDuration(300)?.start()
     }
 
     private fun showError(message: String) {
