@@ -31,7 +31,7 @@ class CalendarPopup(
         "Январь","Февраль","Март","Апрель","Май","Июнь",
         "Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"
     )
-    private var currentMonth: YearMonth = YearMonth.of(year, month)
+    private var currentMonth: YearMonth = initialSelected?.let { YearMonth.from(it) } ?: YearMonth.of(year, month)
     private var selectedDate: LocalDate? = initialSelected
     private val inflater = LayoutInflater.from(ctx)
     private val contentView: View = inflater.inflate(R.layout.popup_calendar, null)
@@ -53,7 +53,7 @@ class CalendarPopup(
 
         fun updateHeader() {
             val monthName = MONTHS_NOMINATIVE[currentMonth.monthValue - 1]
-            tvMonthYear.text = "$monthName, ${currentMonth.year}:"
+            tvMonthYear.text = "$monthName, ${currentMonth.year}"
         }
 
         updateHeader()
