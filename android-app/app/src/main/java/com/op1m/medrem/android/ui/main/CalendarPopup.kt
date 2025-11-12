@@ -27,6 +27,7 @@ class CalendarPopup(
     private val initialSelected: LocalDate?,
     private val listener: CalendarDialogFragment.Listener
 ) {
+    var onDismissListener: (() -> Unit)? = null
     private val MONTHS_NOMINATIVE = arrayOf(
         "Январь","Февраль","Март","Апрель","Май","Июнь",
         "Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"
@@ -142,6 +143,7 @@ class CalendarPopup(
 
     fun dismiss() {
         popup.dismiss()
+        onDismissListener?.invoke()
     }
 
     private fun populateGrid(grid: GridLayout, ym: YearMonth, cellSize: Int) {
@@ -213,4 +215,5 @@ class CalendarPopup(
         }
         grid.rowCount = if (totalCells == 42) 6 else 5
     }
+
 }

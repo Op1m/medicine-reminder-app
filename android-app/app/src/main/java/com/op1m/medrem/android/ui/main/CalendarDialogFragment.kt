@@ -1,6 +1,7 @@
 package com.op1m.medrem.android.ui.main
 
 import android.content.Context
+import android.content.DialogInterface
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -14,7 +15,7 @@ import com.op1m.medrem.android.R
 import org.threeten.bp.LocalDate
 import org.threeten.bp.YearMonth
 import org.threeten.bp.format.TextStyle
-import java.util.Locale
+import java.util.*
 
 class CalendarDialogFragment : DialogFragment() {
 
@@ -25,6 +26,8 @@ class CalendarDialogFragment : DialogFragment() {
     private var listener: Listener? = null
     private var currentMonth: YearMonth = YearMonth.now()
     private val locale = Locale("ru")
+
+    var onDismissListener: (() -> Unit)? = null
 
     companion object {
         fun newInstance(year: Int, month: Int): CalendarDialogFragment {
@@ -63,6 +66,11 @@ class CalendarDialogFragment : DialogFragment() {
     override fun onStart() {
         super.onStart()
         dialog?.window?.setLayout(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT)
+    }
+
+    override fun onDismiss(dialog: DialogInterface) {
+        super.onDismiss(dialog)
+        onDismissListener?.invoke()
     }
 
     private fun populateGrid(grid: GridLayout, ym: YearMonth) {

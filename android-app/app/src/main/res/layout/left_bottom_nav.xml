@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/left_nav_root"
+    android:layout_width="wrap_content"
+    android:layout_height="56dp"
+    android:padding="6dp"
+    android:elevation="6dp"
+    android:background="@drawable/nav_panel_bg"
+    android:clipToPadding="false"
+    android:clipChildren="false">
+
+    <LinearLayout
+        android:id="@+id/left_nav_panel"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:clipToPadding="false"
+        android:clipChildren="false"
+        android:padding="0dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <FrameLayout
+            android:id="@+id/item_home"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="6dp"
+            android:foreground="?android:attr/selectableItemBackground">
+
+        <LinearLayout
+            android:id="@+id/content_home"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:background="@drawable/nav_item_bg_selected">
+
+        <ImageView
+            android:id="@+id/icon_home"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_home"
+            android:tint="#FFFFFF" />
+
+        <TextView
+            android:id="@+id/text_home"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="0dp"
+            android:text="Главная"
+            android:layout_marginTop="-1.7dp"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:fontFamily="@font/fira_sans"
+            android:visibility="visible"/>
+    </LinearLayout>
+    </FrameLayout>
+
+    <FrameLayout
+    android:id="@+id/item_courses"
+    android:layout_width="wrap_content"
+    android:layout_height="match_parent"
+    android:layout_marginEnd="6dp"
+    android:foreground="?android:attr/selectableItemBackground">
+
+    <LinearLayout
+        android:id="@+id/content_courses"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:gravity="center"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp"
+    android:background="@drawable/nav_item_bg_default">
+
+
+    <ImageView
+        android:id="@+id/icon_courses"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_courses"
+        android:tint="#2E86FF" />
+
+    <TextView
+        android:id="@+id/text_courses"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="0dp"
+        android:text="Курсы"
+        android:layout_marginTop="-1.7dp"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:fontFamily="@font/fira_sans"
+        android:visibility="gone"/>
+    </LinearLayout>
+        </FrameLayout>
+
+<FrameLayout
+android:id="@+id/item_profile"
+android:layout_width="wrap_content"
+android:layout_height="match_parent"
+android:foreground="?android:attr/selectableItemBackground">
+
+<LinearLayout
+    android:id="@+id/content_profile"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:gravity="center"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp"
+    android:background="@drawable/nav_item_bg_default">
+
+<ImageView
+    android:id="@+id/icon_profile"
+    android:layout_width="30dp"
+    android:layout_height="30dp"
+    android:scaleType="centerInside"
+    android:src="@drawable/ic_profile"
+    android:tint="#2E86FF" />
+
+<TextView
+    android:id="@+id/text_profile"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="0dp"
+    android:text="Профиль"
+    android:layout_marginTop="-1.7dp"
+    android:textColor="#FFFFFF"
+    android:textSize="16sp"
+    android:textStyle="bold"
+    android:fontFamily="@font/fira_sans"
+    android:visibility="gone"/>
+</LinearLayout>
+    </FrameLayout>
+
+    </LinearLayout>
+
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
