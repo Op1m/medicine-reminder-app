@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
-import android.view.animation.RotateAnimation
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.FrameLayout
@@ -12,20 +11,26 @@ import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.core.widget.NestedScrollView
 import androidx.fragment.app.Fragment
 import com.op1m.medrem.android.R
 import org.threeten.bp.DayOfWeek
 import org.threeten.bp.LocalDate
+import org.threeten.bp.LocalTime
+import org.threeten.bp.format.DateTimeFormatter
+import org.threeten.bp.format.DateTimeParseException
 import org.threeten.bp.format.TextStyle
 import org.threeten.bp.temporal.TemporalAdjusters
-import java.util.*
+import java.util.Locale
 import kotlin.collections.LinkedHashMap
 import kotlin.jvm.functions.Function0
 
-class DiaryFragment : Fragment(), CalendarDialogFragment.Listener {
+class DiaryFragment : Fragment(),
+    CalendarDialogFragment.Listener,
+    ConfirmOptionsSheet.Listener,
+    ConfirmTimeSheet.Listener,
+    AddOptionsSheet.Listener {
 
     private lateinit var tvMonthYear: TextView
     private lateinit var ivMonthArrow: ImageView
@@ -36,15 +41,25 @@ class DiaryFragment : Fragment(), CalendarDialogFragment.Listener {
     private lateinit var emptyOverlay: LinearLayout
     private lateinit var btnAddInside: Button
     private lateinit var flFloatingAddBtn: FrameLayout
+    private var bottomSpacer: View? = null
 
     private var selectedDate: LocalDate = LocalDate.now()
     private val locale = Locale("ru")
+    private val timeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
     enum class MedStatus { PENDING, ACCEPTED, MISSED }
-    data class Medicine(val id: Int, val name: String, var status: MedStatus = MedStatus.PENDING)
+    data class Medicine(
+        val id: Int,
+        val name: String,
+        var status: MedStatus = MedStatus.PENDING,
+        var acceptedAt: String? = null
+    )
 
-    private val groups: LinkedHashMap<String, MutableList<Medicine>> = LinkedHashMap()
+    private var groups: LinkedHashMap<String, MutableList<Medicine>> = LinkedHashMap()
     private var nextId = 1
+    private val expandedTimes: MutableSet<String> = mutableSetOf()
+    private val pendingActionExpanded: MutableMap<String, Boolean> = mutableMapOf()
+    private var desiredBtnWidth: Int = 0
 
     companion object {
         fun newInstance(): DiaryFragment = DiaryFragment()
@@ -66,16 +81,11 @@ class DiaryFragment : Fragment(), CalendarDialogFragment.Listener {
         flFloatingAddBtn = view.findViewById(R.id.fl_floating_add_btn)
 
         hsvWeek.isFillViewport = true
-        hsvWeek.setPadding(0, 0, 0, 0)
         hsvWeek.clipToPadding = false
-        hsvWeek.layoutDirection = View.LAYOUT_DIRECTION_LTR
+        hsvWeek.setPadding(0, 0, 0, 0)
 
-        weekContainer.setPadding(0, 0, 0, 0)
-        val wcLp = weekContainer.layoutParams
-        if (wcLp is ViewGroup.LayoutParams) {
-            wcLp.width = ViewGroup.LayoutParams.MATCH_PARENT
-            weekContainer.layoutParams = wcLp
-        }
+        val wcLp = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        weekContainer.layoutParams = wcLp
 
         btnAddInside.isAllCaps = false
         btnAddInside.transformationMethod = null
@@ -83,10 +93,16 @@ class DiaryFragment : Fragment(), CalendarDialogFragment.Listener {
         btnAddInside.setPadding(dpToPx(16), 0, dpToPx(16), 0)
 
         btnAddInside.setOnClickListener { addMedicineToDefaultTime() }
-        activity?.findViewById<View?>(R.id.btn_right_plus)?.setOnClickListener { addMedicineToDefaultTime() }
+        activity?.findViewById<View?>(R.id.btn_right_plus)?.setOnClickListener {
+            val sheet = AddOptionsSheet()
+            sheet.setListener(this)
+            sheet.show(childFragmentManager, "add_opts")
+        }
 
         tvMonthYear.setOnClickListener { showCalendarPopup() }
         ivMonthArrow.setOnClickListener { showCalendarPopup() }
+
+        desiredBtnWidth = resources.displayMetrics.widthPixels - dpToPx(70) * 2
 
         updateMonthYearText(selectedDate)
         setWeekForDate(selectedDate)
@@ -94,22 +110,15 @@ class DiaryFragment : Fragment(), CalendarDialogFragment.Listener {
         refreshUI()
     }
 
-
     private fun showCalendarPopup() {
-        val popup = CalendarPopup(
-            requireContext(),
-            selectedDate.year,
-            selectedDate.monthValue,
-            selectedDate,
-            object : CalendarDialogFragment.Listener {
-                override fun onDateSelected(date: LocalDate) {
-                    selectedDate = date
-                    updateMonthYearText(date)
-                    setWeekForDate(date)
-                    ivMonthArrow.animate().rotation(0f).setDuration(200).start()
-                }
+        val popup = CalendarPopup(requireContext(), selectedDate.year, selectedDate.monthValue, selectedDate, object : CalendarDialogFragment.Listener {
+            override fun onDateSelected(date: LocalDate) {
+                selectedDate = date
+                updateMonthYearText(date)
+                setWeekForDate(date)
+                ivMonthArrow.animate().rotation(0f).setDuration(200).start()
             }
-        )
+        })
         ivMonthArrow.animate().rotation(180f).setDuration(200).start()
         try {
             val field = popup.javaClass.getDeclaredField("onDismissListener")
@@ -134,7 +143,6 @@ class DiaryFragment : Fragment(), CalendarDialogFragment.Listener {
         weekContainer.removeAllViews()
         val monday = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         val inflater = LayoutInflater.from(requireContext())
-
         for (i in 0..6) {
             val d = monday.plusDays(i.toLong())
             val item = inflater.inflate(R.layout.item_week_day, weekContainer, false)
@@ -142,12 +150,8 @@ class DiaryFragment : Fragment(), CalendarDialogFragment.Listener {
             val tvAbbr = item.findViewById<TextView>(R.id.tv_day_abbr)
             tvNum.text = d.dayOfMonth.toString()
             tvAbbr.text = d.dayOfWeek.getDisplayName(TextStyle.SHORT, locale).lowercase(locale)
-
             val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            lp.width = 0
-            lp.weight = 1f
             item.layoutParams = lp
-
             when {
                 d == selectedDate -> {
                     tvNum.setBackgroundResource(R.drawable.day_bg_selected)
@@ -162,27 +166,25 @@ class DiaryFragment : Fragment(), CalendarDialogFragment.Listener {
                     tvNum.setTextColor(resources.getColor(R.color.design_default_color_primary_dark, null))
                 }
             }
-
             item.setOnClickListener {
                 selectedDate = d
                 updateMonthYearText(selectedDate)
                 setWeekForDate(selectedDate)
+                refreshUI()
             }
-
             weekContainer.addView(item)
         }
-
-        hsvWeek.post {
-            hsvWeek.fullScroll(HorizontalScrollView.FOCUS_LEFT)
-        }
+        hsvWeek.post { hsvWeek.fullScroll(HorizontalScrollView.FOCUS_LEFT) }
     }
 
     private fun addMedicineToDefaultTime() {
         val time = "08:30"
-        val med = Medicine(nextId, "Препарат $nextId", MedStatus.PENDING)
+        val med = Medicine(nextId, "Препарат $nextId", MedStatus.PENDING, null)
         nextId++
         val list = groups.getOrPut(time) { mutableListOf() }
         list.add(med)
+        reorderGroups()
+        expandedTimes.add(time)
         refreshUI(scrollToBottom = true, expandTime = time)
     }
 
@@ -194,14 +196,11 @@ class DiaryFragment : Fragment(), CalendarDialogFragment.Listener {
         val parent = btnAddInside.parent
         if (parent !== flFloatingAddBtn) {
             (parent as? ViewGroup)?.removeView(btnAddInside)
-            val lp = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                dpToPx(44)
-            )
-            lp.marginStart = dpToPx(24)
-            lp.marginEnd = dpToPx(24)
+            val lp = FrameLayout.LayoutParams(desiredBtnWidth, dpToPx(44))
+            lp.marginStart = dpToPx(70)
+            lp.marginEnd = dpToPx(70)
             lp.gravity = Gravity.CENTER_HORIZONTAL or Gravity.BOTTOM
-            lp.bottomMargin = dpToPx(8)
+            lp.bottomMargin = dpToPx(16)
             btnAddInside.layoutParams = lp
             flFloatingAddBtn.addView(btnAddInside)
             flFloatingAddBtn.visibility = View.VISIBLE
@@ -210,28 +209,50 @@ class DiaryFragment : Fragment(), CalendarDialogFragment.Listener {
         }
     }
 
-    private fun placeButtonInScroll() {
+    private fun placeButtonInScrollAfterHeaders() {
         val parent = btnAddInside.parent
         if (parent !== scheduleContainer) {
             (parent as? ViewGroup)?.removeView(btnAddInside)
-            val btnLp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dpToPx(44))
+            val btnLp = LinearLayout.LayoutParams(desiredBtnWidth, dpToPx(44))
             btnLp.topMargin = dpToPx(8)
-            btnLp.marginStart = dpToPx(24)
-            btnLp.marginEnd = dpToPx(24)
+            btnLp.marginStart = dpToPx(70)
+            btnLp.marginEnd = dpToPx(70)
             btnLp.gravity = Gravity.CENTER_HORIZONTAL
             btnAddInside.layoutParams = btnLp
-            scheduleContainer.addView(btnAddInside)
+            val spacer = bottomSpacer ?: createBottomSpacer()
+            var insertIndex = -1
+            for (i in scheduleContainer.childCount - 1 downTo 0) {
+                val child = scheduleContainer.getChildAt(i)
+                val tag = child.tag
+                if (tag == "HEADER_WRAPPER") {
+                    insertIndex = i + 1
+                    break
+                }
+            }
+            if (insertIndex >= 0) {
+                scheduleContainer.addView(btnAddInside, insertIndex)
+            } else {
+                scheduleContainer.addView(btnAddInside)
+            }
+            if (scheduleContainer.indexOfChild(spacer) == -1) scheduleContainer.addView(spacer)
             flFloatingAddBtn.visibility = View.GONE
             btnAddInside.isAllCaps = false
             btnAddInside.transformationMethod = null
         }
     }
 
+    private fun createBottomSpacer(): View {
+        val v = View(requireContext())
+        val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(80))
+        v.layoutParams = lp
+        bottomSpacer = v
+        return v
+    }
+
     private fun refreshUI(scrollToBottom: Boolean = false, expandTime: String? = null) {
         val hasMeds = groups.values.any { it.isNotEmpty() }
         emptyOverlay.isVisible = !hasMeds
         scheduleScroll.isVisible = hasMeds
-
         if (!hasMeds) {
             btnAddInside.visibility = View.VISIBLE
             scheduleContainer.removeAllViews()
@@ -243,148 +264,260 @@ class DiaryFragment : Fragment(), CalendarDialogFragment.Listener {
 
         scheduleContainer.removeAllViews()
         val inflater = LayoutInflater.from(requireContext())
-
-        for ((time, list) in groups) {
+        val times = groups.keys.toList()
+        for (time in times) {
+            val list = groups[time] ?: continue
             if (list.isEmpty()) continue
-            val header = inflater.inflate(R.layout.simple_time_header, scheduleContainer, false)
+
+            val wrapper = LinearLayout(requireContext())
+            wrapper.orientation = LinearLayout.VERTICAL
+            wrapper.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            wrapper.tag = "HEADER_WRAPPER"
+
+            val header = inflater.inflate(R.layout.simple_time_header, wrapper, false)
+            header.tag = "HEADER"
             val timeText = header.findViewById<TextView>(R.id.header_time_text)
             val btnAcceptAll = header.findViewById<Button>(R.id.header_accept_all)
             val headerArrow = header.findViewById<ImageView>(R.id.header_arrow)
             timeText.text = time
             btnAcceptAll.isAllCaps = false
+
+            val wasExpandedBeforeAction = expandedTimes.contains(time)
+            pendingActionExpanded.remove(time)
+
             btnAcceptAll.setOnClickListener {
-                list.forEach { it.status = MedStatus.ACCEPTED }
-                refreshUI()
+                pendingActionExpanded[time] = wasExpandedBeforeAction
+                val sheet = ConfirmOptionsSheet.newInstance(list.size)
+                sheet.setListener(this)
+                sheet.arguments = (sheet.arguments ?: Bundle()).apply { putString("time", time) }
+                sheet.show(childFragmentManager, "confirm_opts_$time")
             }
-            val medsContainer = LinearLayout(requireContext()).apply {
-                orientation = LinearLayout.VERTICAL
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                setPadding(6, 6, 6, 6)
-            }
+
+            val medsContainer = LinearLayout(requireContext())
+            medsContainer.orientation = LinearLayout.VERTICAL
+            medsContainer.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            medsContainer.setPadding(6, 6, 6, 6)
+            medsContainer.tag = "MEDS_CONTAINER_$time"
+
             for (med in list) {
                 val medView = inflater.inflate(R.layout.item_med, medsContainer, false)
                 val medCard = medView.findViewById<LinearLayout>(R.id.med_card)
-                val medIcon = medView.findViewById<ImageView>(R.id.med_icon)
-                val medName = medView.findViewById<TextView>(R.id.med_name)
-                val medDesc = medView.findViewById<TextView>(R.id.med_desc)
                 val medStatus = medView.findViewById<TextView>(R.id.med_status)
-                medName.text = med.name
+                val medDesc = medView.findViewById<TextView>(R.id.med_desc)
+                medView.findViewById<TextView>(R.id.med_name).text = med.name
                 medDesc.text = "1 таб. во время еды"
-                when (med.status) {
-                    MedStatus.ACCEPTED -> {
-                        medCard.isSelected = true
-                        medCard.isActivated = false
-                        medStatus.text = "Принято в $time, сегодня"
-                        medStatus.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_check_green, 0)
-                    }
-                    MedStatus.MISSED -> {
-                        medCard.isSelected = false
-                        medCard.isActivated = true
-                        medStatus.text = "Пропущено"
-                        medStatus.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_cross_gray, 0)
-                    }
-                    MedStatus.PENDING -> {
-                        medCard.isSelected = false
-                        medCard.isActivated = false
-                        medStatus.text = "Ожидается"
-                        medStatus.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_clock, 0)
-                    }
-                }
-                medStatus.compoundDrawablePadding = (resources.displayMetrics.density * 8).toInt()
-                medStatus.isVisible = true
-                ContextCompat.getColorStateList(requireContext(), R.color.med_icon_tint)?.let { medIcon.imageTintList = it }
-                ContextCompat.getColorStateList(requireContext(), R.color.med_name_color)?.let { medName.setTextColor(it) }
-                ContextCompat.getColorStateList(requireContext(), R.color.med_status_color)?.let { medStatus.setTextColor(it) }
+                updateMedViewVisual(med, medCard, medStatus)
+                medView.tag = med.id
                 medView.setOnClickListener {
                     med.status = when (med.status) {
                         MedStatus.PENDING -> MedStatus.ACCEPTED
                         MedStatus.ACCEPTED -> MedStatus.MISSED
                         MedStatus.MISSED -> MedStatus.PENDING
                     }
-                    when (med.status) {
-                        MedStatus.ACCEPTED -> {
-                            medCard.isSelected = true
-                            medCard.isActivated = false
-                            medStatus.text = "Принято в $time, сегодня"
-                            medStatus.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_check_green, 0)
-                        }
-                        MedStatus.MISSED -> {
-                            medCard.isSelected = false
-                            medCard.isActivated = true
-                            medStatus.text = "Пропущено"
-                            medStatus.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_cross_gray, 0)
-                        }
-                        MedStatus.PENDING -> {
-                            medCard.isSelected = false
-                            medCard.isActivated = false
-                            medStatus.text = "Ожидается"
-                            medStatus.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_clock, 0)
-                        }
+                    if (med.status == MedStatus.ACCEPTED && med.acceptedAt == null) {
+                        med.acceptedAt = LocalTime.now().format(timeFormatter)
                     }
-                    medStatus.compoundDrawablePadding = (resources.displayMetrics.density * 8).toInt()
+                    refreshUI(scrollToBottom = false, expandTime = time)
                 }
                 medView.setOnLongClickListener {
                     med.status = MedStatus.MISSED
-                    medCard.isSelected = false
-                    medCard.isActivated = true
-                    medStatus.text = "Пропущено"
-                    medStatus.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_cross_gray, 0)
-                    medStatus.compoundDrawablePadding = (resources.displayMetrics.density * 8).toInt()
+                    refreshUI(scrollToBottom = false, expandTime = time)
                     true
                 }
                 medsContainer.addView(medView)
             }
-            val startVisible = expandTime != null && expandTime == time
+
+            val startVisible = (expandTime != null && expandTime == time) || expandedTimes.contains(time)
             medsContainer.visibility = if (startVisible) View.VISIBLE else View.GONE
             headerArrow.rotation = if (medsContainer.visibility == View.VISIBLE) 180f else 0f
+
             header.setOnClickListener {
                 val visibleNow = medsContainer.visibility == View.VISIBLE
-                medsContainer.visibility = if (visibleNow) View.GONE else View.VISIBLE
-                val from = if (visibleNow) 180f else 0f
-                val to = if (visibleNow) 0f else 180f
-                val rot = RotateAnimation(from, to, RotateAnimation.RELATIVE_TO_SELF, 0.5f, RotateAnimation.RELATIVE_TO_SELF, 0.5f)
-                rot.duration = 200
-                rot.fillAfter = true
-                headerArrow.startAnimation(rot)
+                if (visibleNow) {
+                    medsContainer.visibility = View.GONE
+                    expandedTimes.remove(time)
+                } else {
+                    medsContainer.visibility = View.VISIBLE
+                    expandedTimes.add(time)
+                }
+                scheduleScroll.post { evaluateButtonPlacement(false) }
+                val to = if (medsContainer.visibility == View.VISIBLE) 180f else 0f
+                headerArrow.animate().rotation(to).setDuration(200).start()
             }
-            scheduleContainer.addView(header)
-            scheduleContainer.addView(medsContainer)
+
+            wrapper.addView(header)
+            wrapper.addView(medsContainer)
+            scheduleContainer.addView(wrapper)
         }
 
-        val btnH = dpToPx(44)
-        val bottomNavReserve = dpToPx(56)
-        val spacer = View(requireContext())
-        spacer.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(12))
-        scheduleContainer.addView(spacer)
+        val spacer = bottomSpacer ?: createBottomSpacer()
+        if (scheduleContainer.indexOfChild(spacer) == -1) scheduleContainer.addView(spacer)
 
         scheduleScroll.post {
-            val contentH = scheduleContainer.measuredHeight
-            val visibleH = scheduleScroll.height
-            if (contentH > visibleH - bottomNavReserve - dpToPx(8)) {
-                if (btnAddInside.parent !== scheduleContainer) {
-                    (btnAddInside.parent as? ViewGroup)?.removeView(btnAddInside)
-                    val btnLp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, btnH)
-                    btnLp.topMargin = dpToPx(8)
-                    btnLp.marginStart = dpToPx(24)
-                    btnLp.marginEnd = dpToPx(24)
-                    btnLp.gravity = Gravity.CENTER_HORIZONTAL
-                    btnAddInside.layoutParams = btnLp
-                    scheduleContainer.addView(btnAddInside)
-                    val after = View(requireContext())
-                    after.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(12))
-                    scheduleContainer.addView(after)
+            evaluateButtonPlacement(scrollToBottom)
+        }
+    }
+
+    private fun evaluateButtonPlacement(scrollToBottom: Boolean) {
+        var anyVisibleMeds = false
+        for (i in 0 until scheduleContainer.childCount) {
+            val wrapper = scheduleContainer.getChildAt(i)
+            if (wrapper is ViewGroup && wrapper.tag == "HEADER_WRAPPER") {
+                for (j in 0 until wrapper.childCount) {
+                    val child = wrapper.getChildAt(j)
+                    if (child.tag != null && child.tag.toString().startsWith("MEDS_CONTAINER_")) {
+                        if (child.visibility == View.VISIBLE) {
+                            anyVisibleMeds = true
+                            break
+                        }
+                    }
                 }
-                if (scrollToBottom) scheduleScroll.post { scheduleScroll.fullScroll(View.FOCUS_DOWN) }
-            } else {
-                placeButtonFloating()
-                if (scrollToBottom) scheduleScroll.post { scheduleScroll.fullScroll(View.FOCUS_DOWN) }
+                if (anyVisibleMeds) break
             }
         }
+
+        if (!anyVisibleMeds) {
+            placeButtonFloating()
+            if (scrollToBottom) scheduleScroll.post { scheduleScroll.fullScroll(View.FOCUS_DOWN) }
+            return
+        }
+
+        val visibleH = scheduleScroll.height
+        val contentH = scheduleContainer.height
+        val bottomNavReserve = dpToPx(56)
+        val btnReserve = dpToPx(120)
+        if (contentH + btnReserve > visibleH - bottomNavReserve) {
+            placeButtonInScrollAfterHeaders()
+        } else {
+            placeButtonFloating()
+        }
+        if (scrollToBottom) scheduleScroll.post { scheduleScroll.fullScroll(View.FOCUS_DOWN) }
+    }
+
+    private fun updateMedViewVisual(med: Medicine, medCard: LinearLayout, medStatus: TextView) {
+        when (med.status) {
+            MedStatus.ACCEPTED -> {
+                medCard.isSelected = true
+                medCard.isActivated = false
+                val timeText = med.acceptedAt ?: ""
+                medStatus.text = if (timeText.isNotEmpty()) "Принято в $timeText, сегодня" else "Принято"
+                medStatus.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_check_green, 0)
+            }
+            MedStatus.MISSED -> {
+                medCard.isSelected = false
+                medCard.isActivated = true
+                medStatus.text = "Пропущено"
+                medStatus.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_cross_gray, 0)
+            }
+            MedStatus.PENDING -> {
+                medCard.isSelected = false
+                medCard.isActivated = false
+                medStatus.text = "Ожидается"
+                medStatus.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_clock, 0)
+            }
+        }
+        medStatus.compoundDrawablePadding = dpToPx(8)
+        medStatus.isVisible = true
     }
 
     override fun onDateSelected(date: LocalDate) {
         selectedDate = date
         updateMonthYearText(date)
         setWeekForDate(date)
+        refreshUI()
+    }
+
+    override fun onAcceptAllRequested(time: String) {
+        val list = groups[time] ?: return
+        val sheet = ConfirmTimeSheet.newInstance(list.size)
+        sheet.setListener(this)
+        sheet.arguments = (sheet.arguments ?: Bundle()).apply { putString("time", time) }
+        sheet.show(childFragmentManager, "confirm_time_$time")
+    }
+
+    override fun onSkipAllRequested(time: String) {
+        val list = groups[time] ?: return
+        list.forEach {
+            it.status = MedStatus.MISSED
+            it.acceptedAt = null
+        }
+        val wasExpanded = pendingActionExpanded.remove(time) ?: expandedTimes.contains(time)
+        if (wasExpanded) expandedTimes.add(time) else expandedTimes.remove(time)
+        refreshUI(expandTime = time)
+    }
+
+    override fun onMoveAllRequested(time: String) {
+        val list = groups.remove(time) ?: return
+        val dest = "09:00"
+        val destList = groups.getOrPut(dest) { mutableListOf() }
+        destList.addAll(list)
+        reorderGroups()
+        val wasExpanded = pendingActionExpanded.remove(time) ?: expandedTimes.contains(time)
+        if (wasExpanded) expandedTimes.add(dest) else expandedTimes.remove(dest)
+        expandedTimes.remove(time)
+        refreshUI(scrollToBottom = true, expandTime = dest)
+    }
+
+    override fun onConfirmNow(time: String) {
+        val list = groups[time] ?: return
+        val now = LocalTime.now().format(timeFormatter)
+        list.forEach {
+            it.status = MedStatus.ACCEPTED
+            it.acceptedAt = now
+        }
+        val wasExpanded = pendingActionExpanded.remove(time) ?: expandedTimes.contains(time)
+        if (wasExpanded) expandedTimes.add(time) else expandedTimes.remove(time)
+        refreshUI(expandTime = time)
+    }
+
+    override fun onConfirmBySchedule(time: String) {
+        val list = groups[time] ?: return
+        list.forEach {
+            it.status = MedStatus.ACCEPTED
+            it.acceptedAt = time
+        }
+        val wasExpanded = pendingActionExpanded.remove(time) ?: expandedTimes.contains(time)
+        if (wasExpanded) expandedTimes.add(time) else expandedTimes.remove(time)
+        refreshUI(expandTime = time)
+    }
+
+    override fun onConfirmTimeCustom(time: String, chosen: String) {
+        val list = groups[time] ?: return
+        list.forEach {
+            it.status = MedStatus.ACCEPTED
+            it.acceptedAt = chosen
+        }
+        val wasExpanded = pendingActionExpanded.remove(time) ?: expandedTimes.contains(time)
+        if (wasExpanded) expandedTimes.add(time) else expandedTimes.remove(time)
+        refreshUI(expandTime = time)
+    }
+
+    override fun onNewMedicineRequested() {
+        val sheet = SimpleInfoSheet.newInstance("Новый препарат", "Здесь будет форма добавления препарата")
+        sheet.show(childFragmentManager, "new_med")
+    }
+
+    override fun onNewCourseRequested() {
+        val sheet = SimpleInfoSheet.newInstance("Новый курс", "Здесь будет форма добавления курса")
+        sheet.show(childFragmentManager, "new_course")
+    }
+
+    override fun onCancelAddOptions() {
+    }
+
+    private fun reorderGroups() {
+        try {
+            val entries = groups.entries.toList().sortedWith(compareBy { entry ->
+                try {
+                    LocalTime.parse(entry.key)
+                } catch (e: DateTimeParseException) {
+                    LocalTime.MIDNIGHT
+                }
+            })
+            val newMap = LinkedHashMap<String, MutableList<Medicine>>()
+            for (e in entries) newMap[e.key] = e.value
+            groups = newMap
+        } catch (e: Exception) {
+        }
     }
 }
