@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/med_card_bg_accepted" android:state_selected="true"/>
+    <item android:drawable="@drawable/med_card_bg_missed" android:state_activated="true"/>
+    <item android:drawable="@drawable/med_card_bg_default"/>
+</selector>

@@ -3,26 +3,35 @@
     android:id="@+id/med_card"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:minHeight="78dp"
     android:orientation="horizontal"
-    android:padding="12dp"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="14dp"
+    android:paddingBottom="14dp"
     android:layout_marginTop="8dp"
     android:layout_marginBottom="8dp"
-    android:background="@drawable/med_card_bg"
-    android:gravity="center_vertical">
+    android:background="@drawable/med_card_bg_selector"
+    android:gravity="center_vertical"
+    android:clickable="true"
+    android:focusable="true">
 
     <ImageView
         android:id="@+id/med_icon"
-        android:layout_width="44dp"
-        android:layout_height="44dp"
+        android:layout_width="65dp"
+        android:layout_height="65dp"
         android:src="@drawable/ic_pill"
-        android:tint="#B0CFFB"/>
+        android:scaleType="centerInside"
+        android:background="@drawable/med_icon_bg_selector_rect"
+        android:padding="10dp"
+        android:duplicateParentState="true" />
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:orientation="vertical"
-        android:layout_marginStart="10dp">
+        android:layout_marginStart="12dp">
 
         <TextView
             android:id="@+id/med_name"
@@ -30,8 +39,10 @@
             android:layout_height="wrap_content"
             android:text="Название препарата"
             android:textStyle="bold"
-            android:textColor="#263238"
-            android:fontFamily="@font/fira_sans"/>
+            android:textColor="@color/med_name_color"
+            android:textSize="17sp"
+            android:fontFamily="@font/fira_sans"
+            android:duplicateParentState="true"/>
 
         <TextView
             android:id="@+id/med_desc"
@@ -39,16 +50,19 @@
             android:layout_height="wrap_content"
             android:text="1 таб. во время еды"
             android:textColor="#8FA9C6"
-            android:textSize="12sp"
-            android:fontFamily="@font/fira_sans"/>
+            android:textSize="13sp"
+            android:fontFamily="@font/fira_sans"
+            android:layout_marginTop="3dp"/>
+
+        <TextView
+            android:id="@+id/med_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ожидается"
+            android:textStyle="bold"
+            android:textSize="13sp"
+            android:layout_marginTop="3dp"
+            android:duplicateParentState="true"/>
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/med_status"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Принято"
-        android:textColor="#2E86FF"
-        android:textSize="12sp"
-        android:visibility="gone"/>
 </LinearLayout>

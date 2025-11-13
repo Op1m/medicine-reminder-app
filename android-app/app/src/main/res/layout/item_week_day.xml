@@ -4,7 +4,7 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:gravity="center"
-    android:padding="6dp">
+    android:padding="4dp">
 
     <TextView
         android:id="@+id/tv_day_num"
