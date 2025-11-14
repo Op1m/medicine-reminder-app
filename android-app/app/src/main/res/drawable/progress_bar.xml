@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <item android:id="@android:background">
+    <item>
         <shape android:shape="rectangle">
             <size android:height="8dp"/>
             <solid android:color="#E8EEF9"/>
@@ -9,7 +9,7 @@
         </shape>
     </item>
 
-    <item android:id="@android:progress">
+    <item>
         <clip>
             <shape android:shape="rectangle">
                 <size android:height="8dp"/>
