@@ -20,4 +20,9 @@
         <item>Ноябрь</item>
         <item>Декабрь</item>
     </string-array>
+    <string name="pill">Пилюля</string>
+    <string name="info">Инфо</string>
+    <string name="edit">Редактировать</string>
+    <string name="skip">Пропустить</string>
+    <string name="accept">Принять</string>
 </resources>

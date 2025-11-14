@@ -5,12 +5,13 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
+import android.view.WindowManager
+import android.widget.LinearLayout
 import android.widget.TextView
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import androidx.fragment.app.DialogFragment
 import com.op1m.medrem.android.R
 
-class ConfirmTimeSheet : BottomSheetDialogFragment() {
+class ConfirmTimeSheet : DialogFragment() {
 
     interface Listener {
         fun onConfirmNow(time: String)
@@ -20,47 +21,70 @@ class ConfirmTimeSheet : BottomSheetDialogFragment() {
 
     private var listener: Listener? = null
 
-    fun setListener(l: Listener) { listener = l }
-
     companion object {
         fun newInstance(count: Int): ConfirmTimeSheet {
-            val f = ConfirmTimeSheet()
+            val s = ConfirmTimeSheet()
             val b = Bundle()
             b.putInt("count", count)
-            f.arguments = b
-            return f
+            s.arguments = b
+            return s
         }
+    }
+
+    fun setListener(l: Listener) {
+        listener = l
     }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val d = super.onCreateDialog(savedInstanceState)
-        d.window?.setDimAmount(0.3f)
+        d.window?.setBackgroundDrawableResource(android.R.color.transparent)
         return d
     }
 
+    override fun onStart() {
+        super.onStart()
+        dialog?.window?.setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT)
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        val v = inflater.inflate(R.layout.sheet_confirm_time, container, false)
-        val tvTitle = v.findViewById<TextView>(R.id.sheet_title)
-        val btnNow = v.findViewById<Button>(R.id.sheet_btn_now)
-        val btnSchedule = v.findViewById<Button>(R.id.sheet_btn_schedule)
-        val btnTime = v.findViewById<Button>(R.id.sheet_btn_time)
-        val btnCancel = v.findViewById<Button>(R.id.sheet_btn_cancel)
-        val count = arguments?.getInt("count", 0) ?: 0
-        val time = arguments?.getString("time") ?: ""
-        tvTitle.text = "Когда вы приняли препараты?\nОтметить $count лекарств на время"
-        btnNow.setOnClickListener {
+        val v = inflater.inflate(R.layout.dialog_sheet_actions, container, false)
+        val title = v.findViewById<TextView>(R.id.sheet_title)
+        val optionsContainer = v.findViewById<LinearLayout>(R.id.options_container)
+        val btnCancel = v.findViewById<TextView>(R.id.btn_cancel_sheet)
+        title.text = "Когда вы приняли препараты?"
+
+        addOption(inflater, optionsContainer, "Сейчас") {
+            val time = arguments?.getString("time") ?: ""
             listener?.onConfirmNow(time)
             dismiss()
         }
-        btnSchedule.setOnClickListener {
+        addDivider(optionsContainer)
+        addOption(inflater, optionsContainer, "По расписанию") {
+            val time = arguments?.getString("time") ?: ""
             listener?.onConfirmBySchedule(time)
             dismiss()
         }
-        btnTime.setOnClickListener {
+        addDivider(optionsContainer)
+        addOption(inflater, optionsContainer, "Время") {
+            val time = arguments?.getString("time") ?: ""
             listener?.onConfirmTimeCustom(time, "09:00")
             dismiss()
         }
+
         btnCancel.setOnClickListener { dismiss() }
         return v
+    }
+
+    private fun addOption(inflater: LayoutInflater, parent: LinearLayout, text: String, onClick: () -> Unit) {
+        val t = inflater.inflate(R.layout.sheet_action_row, parent, false) as TextView
+        t.text = text
+        t.setOnClickListener { onClick() }
+        parent.addView(t)
+    }
+
+    private fun addDivider(parent: LinearLayout) {
+        val inflater = LayoutInflater.from(context)
+        val d = inflater.inflate(R.layout.sheet_divider, parent, false)
+        parent.addView(d)
     }
 }

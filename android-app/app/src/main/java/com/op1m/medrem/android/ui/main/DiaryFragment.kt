@@ -283,7 +283,6 @@ class DiaryFragment : Fragment(),
             btnAcceptAll.isAllCaps = false
 
             val wasExpandedBeforeAction = expandedTimes.contains(time)
-            pendingActionExpanded.remove(time)
 
             btnAcceptAll.setOnClickListener {
                 pendingActionExpanded[time] = wasExpandedBeforeAction
@@ -340,7 +339,7 @@ class DiaryFragment : Fragment(),
                     medsContainer.visibility = View.VISIBLE
                     expandedTimes.add(time)
                 }
-                scheduleScroll.post { evaluateButtonPlacement(false) }
+                scheduleScroll.post { evaluateButtonPlacement(scrollToBottom) }
                 val to = if (medsContainer.visibility == View.VISIBLE) 180f else 0f
                 headerArrow.animate().rotation(to).setDuration(200).start()
             }
@@ -354,43 +353,22 @@ class DiaryFragment : Fragment(),
         if (scheduleContainer.indexOfChild(spacer) == -1) scheduleContainer.addView(spacer)
 
         scheduleScroll.post {
-            evaluateButtonPlacement(scrollToBottom)
+            if (groups.isEmpty()) {
+                placeButtonFloating()
+            } else {
+                placeButtonInScrollAfterHeaders()
+            }
+            if (scrollToBottom) scheduleScroll.post { scheduleScroll.fullScroll(View.FOCUS_DOWN) }
         }
     }
 
     private fun evaluateButtonPlacement(scrollToBottom: Boolean) {
-        var anyVisibleMeds = false
-        for (i in 0 until scheduleContainer.childCount) {
-            val wrapper = scheduleContainer.getChildAt(i)
-            if (wrapper is ViewGroup && wrapper.tag == "HEADER_WRAPPER") {
-                for (j in 0 until wrapper.childCount) {
-                    val child = wrapper.getChildAt(j)
-                    if (child.tag != null && child.tag.toString().startsWith("MEDS_CONTAINER_")) {
-                        if (child.visibility == View.VISIBLE) {
-                            anyVisibleMeds = true
-                            break
-                        }
-                    }
-                }
-                if (anyVisibleMeds) break
-            }
-        }
-
-        if (!anyVisibleMeds) {
+        if (groups.isEmpty()) {
             placeButtonFloating()
             if (scrollToBottom) scheduleScroll.post { scheduleScroll.fullScroll(View.FOCUS_DOWN) }
             return
         }
-
-        val visibleH = scheduleScroll.height
-        val contentH = scheduleContainer.height
-        val bottomNavReserve = dpToPx(56)
-        val btnReserve = dpToPx(120)
-        if (contentH + btnReserve > visibleH - bottomNavReserve) {
-            placeButtonInScrollAfterHeaders()
-        } else {
-            placeButtonFloating()
-        }
+        placeButtonInScrollAfterHeaders()
         if (scrollToBottom) scheduleScroll.post { scheduleScroll.fullScroll(View.FOCUS_DOWN) }
     }
 
@@ -429,6 +407,7 @@ class DiaryFragment : Fragment(),
 
     override fun onAcceptAllRequested(time: String) {
         val list = groups[time] ?: return
+        pendingActionExpanded[time] = expandedTimes.contains(time)
         val sheet = ConfirmTimeSheet.newInstance(list.size)
         sheet.setListener(this)
         sheet.arguments = (sheet.arguments ?: Bundle()).apply { putString("time", time) }
@@ -441,9 +420,11 @@ class DiaryFragment : Fragment(),
             it.status = MedStatus.MISSED
             it.acceptedAt = null
         }
-        val wasExpanded = pendingActionExpanded.remove(time) ?: expandedTimes.contains(time)
-        if (wasExpanded) expandedTimes.add(time) else expandedTimes.remove(time)
-        refreshUI(expandTime = time)
+        val prev = pendingActionExpanded.remove(time)
+        if (prev != null) {
+            if (prev) expandedTimes.add(time) else expandedTimes.remove(time)
+        }
+        refreshUI()
     }
 
     override fun onMoveAllRequested(time: String) {
@@ -452,10 +433,10 @@ class DiaryFragment : Fragment(),
         val destList = groups.getOrPut(dest) { mutableListOf() }
         destList.addAll(list)
         reorderGroups()
-        val wasExpanded = pendingActionExpanded.remove(time) ?: expandedTimes.contains(time)
-        if (wasExpanded) expandedTimes.add(dest) else expandedTimes.remove(dest)
+        val prev = pendingActionExpanded.remove(time)
+        if (prev == true) expandedTimes.add(dest)
         expandedTimes.remove(time)
-        refreshUI(scrollToBottom = true, expandTime = dest)
+        refreshUI(scrollToBottom = true)
     }
 
     override fun onConfirmNow(time: String) {
@@ -465,9 +446,11 @@ class DiaryFragment : Fragment(),
             it.status = MedStatus.ACCEPTED
             it.acceptedAt = now
         }
-        val wasExpanded = pendingActionExpanded.remove(time) ?: expandedTimes.contains(time)
-        if (wasExpanded) expandedTimes.add(time) else expandedTimes.remove(time)
-        refreshUI(expandTime = time)
+        val prev = pendingActionExpanded.remove(time)
+        if (prev != null) {
+            if (prev) expandedTimes.add(time) else expandedTimes.remove(time)
+        }
+        refreshUI()
     }
 
     override fun onConfirmBySchedule(time: String) {
@@ -476,9 +459,11 @@ class DiaryFragment : Fragment(),
             it.status = MedStatus.ACCEPTED
             it.acceptedAt = time
         }
-        val wasExpanded = pendingActionExpanded.remove(time) ?: expandedTimes.contains(time)
-        if (wasExpanded) expandedTimes.add(time) else expandedTimes.remove(time)
-        refreshUI(expandTime = time)
+        val prev = pendingActionExpanded.remove(time)
+        if (prev != null) {
+            if (prev) expandedTimes.add(time) else expandedTimes.remove(time)
+        }
+        refreshUI()
     }
 
     override fun onConfirmTimeCustom(time: String, chosen: String) {
@@ -487,9 +472,11 @@ class DiaryFragment : Fragment(),
             it.status = MedStatus.ACCEPTED
             it.acceptedAt = chosen
         }
-        val wasExpanded = pendingActionExpanded.remove(time) ?: expandedTimes.contains(time)
-        if (wasExpanded) expandedTimes.add(time) else expandedTimes.remove(time)
-        refreshUI(expandTime = time)
+        val prev = pendingActionExpanded.remove(time)
+        if (prev != null) {
+            if (prev) expandedTimes.add(time) else expandedTimes.remove(time)
+        }
+        refreshUI()
     }
 
     override fun onNewMedicineRequested() {
