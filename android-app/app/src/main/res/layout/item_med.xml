@@ -21,6 +21,7 @@
         android:layout_width="65dp"
         android:layout_height="65dp"
         android:src="@drawable/ic_pill"
+        android:tint="@color/iconTint"
         android:scaleType="centerInside"
         android:background="@drawable/med_icon_bg_selector_rect"
         android:padding="10dp"

@@ -162,10 +162,11 @@ class DiaryFragment : Fragment(),
         val time = "08:30"
         val med = Medicine(nextId, "Препарат $nextId", MedStatus.PENDING, null)
         nextId++
+        val existedBefore = groups.containsKey(time)
         val list = groups.getOrPut(time) { mutableListOf() }
         list.add(med)
         reorderGroups()
-        expandedTimes.add(time)
+        if (!existedBefore) expandedTimes.add(time)
         refreshUI(scrollToBottom = true, expandTime = time)
     }
 
@@ -177,23 +178,30 @@ class DiaryFragment : Fragment(),
         val parent = btnAddInside.parent
         if (parent !== flFloatingAddBtn) {
             (parent as? ViewGroup)?.removeView(btnAddInside)
+            removeExistingBtnWrapper()
+            removeBottomSpacerIfPresent()
             val lp = FrameLayout.LayoutParams(desiredBtnWidth, dpToPx(44))
             lp.marginStart = dpToPx(70)
             lp.marginEnd = dpToPx(70)
             lp.gravity = Gravity.CENTER_HORIZONTAL or Gravity.BOTTOM
-            lp.bottomMargin = dpToPx(16)
+            lp.bottomMargin = dpToPx(72)
             btnAddInside.layoutParams = lp
+            btnAddInside.minimumWidth = desiredBtnWidth
             flFloatingAddBtn.addView(btnAddInside)
             flFloatingAddBtn.visibility = View.VISIBLE
+            flFloatingAddBtn.bringToFront()
             btnAddInside.isAllCaps = false
             btnAddInside.transformationMethod = null
+            flFloatingAddBtn.requestLayout()
         }
     }
 
     private fun placeButtonInScrollAfterHeaders() {
-        val parent = btnAddInside.parent
-        if (parent === scheduleContainer) return
-        (parent as? ViewGroup)?.removeView(btnAddInside)
+        val currentParent = btnAddInside.parent
+        val wrapperExists = findExistingBtnWrapper() != null
+        if (currentParent === scheduleContainer && wrapperExists) return
+        (currentParent as? ViewGroup)?.removeView(btnAddInside)
+        removeExistingBtnWrapper()
         val wrapper = FrameLayout(requireContext())
         wrapper.tag = "BTN_WRAPPER"
         val wrapLp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -202,6 +210,7 @@ class DiaryFragment : Fragment(),
         val innerLp = FrameLayout.LayoutParams(desiredBtnWidth, dpToPx(44))
         innerLp.gravity = Gravity.CENTER_HORIZONTAL
         btnAddInside.layoutParams = innerLp
+        btnAddInside.minimumWidth = desiredBtnWidth
         wrapper.addView(btnAddInside)
         var insertIndex = -1
         for (i in scheduleContainer.childCount - 1 downTo 0) {
@@ -222,6 +231,20 @@ class DiaryFragment : Fragment(),
         flFloatingAddBtn.visibility = View.GONE
         btnAddInside.isAllCaps = false
         btnAddInside.transformationMethod = null
+        scheduleContainer.requestLayout()
+    }
+
+    private fun findExistingBtnWrapper(): View? {
+        for (i in 0 until scheduleContainer.childCount) {
+            val c = scheduleContainer.getChildAt(i)
+            if (c.tag == "BTN_WRAPPER") return c
+        }
+        return null
+    }
+
+    private fun removeExistingBtnWrapper() {
+        val existing = findExistingBtnWrapper()
+        if (existing != null) scheduleContainer.removeView(existing)
     }
 
     private fun createBottomSpacer(): View {
@@ -232,31 +255,37 @@ class DiaryFragment : Fragment(),
         return v
     }
 
+    private fun removeBottomSpacerIfPresent() {
+        bottomSpacer?.let { sp ->
+            if (scheduleContainer.indexOfChild(sp) != -1) scheduleContainer.removeView(sp)
+            bottomSpacer = null
+        }
+    }
+
     private fun refreshUI(scrollToBottom: Boolean = false, expandTime: String? = null) {
         val hasMeds = groups.values.any { it.isNotEmpty() }
         emptyOverlay.isVisible = !hasMeds
         scheduleScroll.isVisible = hasMeds
+        btnAddInside.visibility = View.INVISIBLE
         if (!hasMeds) {
-            btnAddInside.visibility = View.VISIBLE
             scheduleContainer.removeAllViews()
+            removeExistingBtnWrapper()
+            removeBottomSpacerIfPresent()
             placeButtonFloating()
-            return
-        } else {
             btnAddInside.visibility = View.VISIBLE
+            return
         }
-
         scheduleContainer.removeAllViews()
+        removeExistingBtnWrapper()
         val inflater = LayoutInflater.from(requireContext())
         val times = groups.keys.toList()
         for (time in times) {
             val list = groups[time] ?: continue
             if (list.isEmpty()) continue
-
             val wrapper = LinearLayout(requireContext())
             wrapper.orientation = LinearLayout.VERTICAL
             wrapper.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             wrapper.tag = "HEADER_WRAPPER"
-
             val header = inflater.inflate(R.layout.simple_time_header, wrapper, false)
             header.tag = "HEADER"
             val timeText = header.findViewById<TextView>(R.id.header_time_text)
@@ -264,9 +293,7 @@ class DiaryFragment : Fragment(),
             val headerArrow = header.findViewById<ImageView>(R.id.header_arrow)
             timeText.text = time
             btnAcceptAll.isAllCaps = false
-
             val wasExpandedBeforeAction = expandedTimes.contains(time)
-
             btnAcceptAll.setOnClickListener {
                 pendingActionExpanded[time] = wasExpandedBeforeAction
                 val sheet = ConfirmOptionsSheet.newInstance(list.size)
@@ -274,13 +301,11 @@ class DiaryFragment : Fragment(),
                 sheet.arguments = (sheet.arguments ?: Bundle()).apply { putString("time", time) }
                 sheet.show(childFragmentManager, "confirm_opts_$time")
             }
-
             val medsContainer = LinearLayout(requireContext())
             medsContainer.orientation = LinearLayout.VERTICAL
             medsContainer.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             medsContainer.setPadding(6, 6, 6, 6)
             medsContainer.tag = "MEDS_CONTAINER_$time"
-
             for (med in list) {
                 val medView = inflater.inflate(R.layout.item_med, medsContainer, false)
                 val medCard = medView.findViewById<LinearLayout>(R.id.med_card)
@@ -297,16 +322,14 @@ class DiaryFragment : Fragment(),
                 }
                 medView.setOnLongClickListener {
                     med.status = MedStatus.MISSED
-                    refreshUI(scrollToBottom = false, expandTime = time)
+                    refreshUI(scrollToBottom = false)
                     true
                 }
                 medsContainer.addView(medView)
             }
-
-            val startVisible = (expandTime != null && expandTime == time) || expandedTimes.contains(time)
+            val startVisible = expandedTimes.contains(time) || (expandTime != null && expandTime == time)
             medsContainer.visibility = if (startVisible) View.VISIBLE else View.GONE
-            headerArrow.rotation = if (medsContainer.visibility == View.VISIBLE) 180f else 0f
-
+            headerArrow.rotation = if (startVisible) 180f else 0f
             header.setOnClickListener {
                 val visibleNow = medsContainer.visibility == View.VISIBLE
                 if (visibleNow) {
@@ -316,31 +339,42 @@ class DiaryFragment : Fragment(),
                     medsContainer.visibility = View.VISIBLE
                     expandedTimes.add(time)
                 }
-                scheduleScroll.post { evaluateButtonPlacement() }
+                decideAndPlaceButton()
                 val to = if (medsContainer.visibility == View.VISIBLE) 180f else 0f
                 headerArrow.animate().rotation(to).setDuration(200).start()
             }
-
             wrapper.addView(header)
             wrapper.addView(medsContainer)
             scheduleContainer.addView(wrapper)
         }
-
         val spacer = bottomSpacer ?: createBottomSpacer()
         if (scheduleContainer.indexOfChild(spacer) == -1) scheduleContainer.addView(spacer)
+        decideAndPlaceButton()
+        if (scrollToBottom) scheduleScroll.post { scheduleScroll.fullScroll(View.FOCUS_DOWN) }
+        btnAddInside.visibility = View.VISIBLE
+    }
 
-        scheduleScroll.post {
-            evaluateButtonPlacement()
-            if (scrollToBottom) scheduleScroll.fullScroll(View.FOCUS_DOWN)
+    private fun decideAndPlaceButton() {
+        val target = decideButtonPlacement()
+        when (target) {
+            ButtonPlacement.FLOAT -> {
+                placeButtonFloating()
+            }
+            ButtonPlacement.SCROLL -> {
+                placeButtonInScrollAfterHeaders()
+            }
         }
     }
 
-    private fun evaluateButtonPlacement() {
-        if (groups.isEmpty()) {
-            placeButtonFloating()
-            return
+    private enum class ButtonPlacement { FLOAT, SCROLL }
+
+    private fun decideButtonPlacement(): ButtonPlacement {
+        if (groups.isEmpty()) return ButtonPlacement.FLOAT
+        for ((time, list) in groups) {
+            if (list.isEmpty()) continue
+            if (expandedTimes.contains(time)) return ButtonPlacement.SCROLL
         }
-        placeButtonInScrollAfterHeaders()
+        return ButtonPlacement.FLOAT
     }
 
     private fun updateMedViewVisual(med: Medicine, medCard: LinearLayout, medStatus: TextView) {
@@ -395,7 +429,7 @@ class DiaryFragment : Fragment(),
         if (prev != null) {
             if (prev) expandedTimes.add(time) else expandedTimes.remove(time)
         }
-        refreshUI(expandTime = time)
+        refreshUI()
     }
 
     override fun onMoveAllRequested(time: String) {
@@ -403,11 +437,13 @@ class DiaryFragment : Fragment(),
         val dest = "09:00"
         val destList = groups.getOrPut(dest) { mutableListOf() }
         destList.addAll(list)
-        reorderGroups()
         val prev = pendingActionExpanded.remove(time)
-        if (prev == true) expandedTimes.add(dest)
+        reorderGroups()
+        if (prev != null) {
+            if (prev) expandedTimes.add(dest) else expandedTimes.remove(dest)
+        }
         expandedTimes.remove(time)
-        refreshUI(scrollToBottom = true, expandTime = dest)
+        refreshUI(scrollToBottom = true)
     }
 
     override fun onConfirmNow(time: String) {
@@ -421,7 +457,7 @@ class DiaryFragment : Fragment(),
         if (prev != null) {
             if (prev) expandedTimes.add(time) else expandedTimes.remove(time)
         }
-        refreshUI(expandTime = time)
+        refreshUI()
     }
 
     override fun onConfirmBySchedule(time: String) {
@@ -434,7 +470,7 @@ class DiaryFragment : Fragment(),
         if (prev != null) {
             if (prev) expandedTimes.add(time) else expandedTimes.remove(time)
         }
-        refreshUI(expandTime = time)
+        refreshUI()
     }
 
     override fun onConfirmTimeCustom(time: String, chosen: String) {
@@ -447,7 +483,7 @@ class DiaryFragment : Fragment(),
         if (prev != null) {
             if (prev) expandedTimes.add(time) else expandedTimes.remove(time)
         }
-        refreshUI(expandTime = time)
+        refreshUI()
     }
 
     override fun onNewMedicineRequested() {
@@ -468,7 +504,7 @@ class DiaryFragment : Fragment(),
         val med = list.find { it.id == medId } ?: return
         med.status = MedStatus.ACCEPTED
         med.acceptedAt = LocalTime.now().format(timeFormatter)
-        refreshUI(expandTime = time)
+        refreshUI()
     }
 
     override fun onPillSkip(medId: Int, time: String) {
@@ -476,17 +512,24 @@ class DiaryFragment : Fragment(),
         val med = list.find { it.id == medId } ?: return
         med.status = MedStatus.MISSED
         med.acceptedAt = null
-        refreshUI(expandTime = time)
+        refreshUI()
     }
 
     override fun onPillDelete(medId: Int, time: String) {
         val list = groups[time] ?: return
-        val removed = list.removeAll { it.id == medId }
+        list.removeAll { it.id == medId }
         if (list.isEmpty()) {
             groups.remove(time)
             expandedTimes.remove(time)
         }
-        if (removed) refreshUI()
+        reorderGroups()
+        if (groups.isEmpty()) {
+            scheduleContainer.removeAllViews()
+            removeExistingBtnWrapper()
+            removeBottomSpacerIfPresent()
+            placeButtonFloating()
+        }
+        refreshUI()
     }
 
     override fun onPillMove(medId: Int, time: String) {
@@ -502,7 +545,7 @@ class DiaryFragment : Fragment(),
         destList.add(med)
         reorderGroups()
         expandedTimes.add(dest)
-        refreshUI(scrollToBottom = true, expandTime = dest)
+        refreshUI(scrollToBottom = true)
     }
 
     override fun onPillBack() {

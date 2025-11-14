@@ -128,7 +128,7 @@ class PillBottomSheet : BottomSheetDialogFragment() {
 
         bottomSheet.setBackgroundResource(R.drawable.bg_sheet)
         val screenH = resources.displayMetrics.heightPixels
-        val targetHeight = (screenH * 0.78).toInt()
+        val targetHeight = (screenH * 0.9).toInt()
 
         bottomSheet.layoutParams.height = targetHeight
         bottomSheet.requestLayout()
