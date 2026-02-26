@@ -21,31 +21,31 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<UserDTO> login(@RequestBody LoginRequest request) {
-        System.out.println("🔐 AuthController: Попытка входа: " + request.getUsername());
+        System.out.println("Попытка входа: " + request.getUsername());
 
         User user = userService.findByUsername(request.getUsername());
 
         if (user != null && passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             UserDTO userDTO = DTOMapper.toUserDTO(user);
-            System.out.println("✅ AuthController: Успешный вход: " + user.getUsername());
+            System.out.println("Успешный вход: " + user.getUsername());
             return new ResponseEntity<>(userDTO, HttpStatus.OK);
         }
 
-        System.out.println("❌ AuthController: Неверные credentials: " + request.getUsername());
+        System.out.println("Неверные credentials: " + request.getUsername());
         return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
     }
 
     @PostMapping("/register")
     public ResponseEntity<UserDTO> register(@RequestBody UserRegistrationRequest request) {
         try {
-            System.out.println("👤 AuthController: Регистрация: " + request.getUsername());
+            System.out.println("Регистрация: " + request.getUsername());
 
             User newUser = userService.createUser(request.getUsername(), request.getPassword(), request.getEmail());
             UserDTO userDTO = DTOMapper.toUserDTO(newUser);
-            System.out.println("✅ AuthController: Пользователь зарегистрирован: " + newUser.getUsername());
+            System.out.println("Пользователь зарегистрирован: " + newUser.getUsername());
             return new ResponseEntity<>(userDTO, HttpStatus.CREATED);
         } catch (RuntimeException e ) {
-            System.out.println("❌ AuthController: Ошибка регистрации: " + e.getMessage());
+            System.out.println("Ошибка регистрации: " + e.getMessage());
             return new ResponseEntity<>(HttpStatus.CONFLICT);
         }
     }

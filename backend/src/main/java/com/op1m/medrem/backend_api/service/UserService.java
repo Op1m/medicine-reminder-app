@@ -17,4 +17,7 @@ public interface UserService {
     User getCurrentUser(String username);
     void deactivateUser(Long userId);
     void activateUser(Long userId);
+    User findByTelegramId(Long telegramId);
+    User save(User user);
+    User update(User user);
 }

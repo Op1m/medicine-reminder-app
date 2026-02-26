@@ -37,6 +37,18 @@ public class User {
     @Column(name = "is_active")
     private Boolean isActive = true;
 
+    @Column(name = "telegram_id", unique = true)
+    private Long telegramId;
+
+    @Column(name = "photo_url")
+    private String photoUrl;
+
+    @Column(name = "language_code")
+    private String languageCode;
+
+    @Column(name = "last_login")
+    private LocalDateTime lastLogin;
+
 
     @OneToMany(
             mappedBy = "user",
@@ -133,4 +145,16 @@ public class User {
 
     public Boolean getActive() { return isActive; }
     public void setActive(Boolean active) { isActive = active; }
+
+    public Long getTelegramId() { return telegramId; }
+    public void setTelegramId(Long telegramId) { this.telegramId = telegramId; }
+
+    public String getPhotoUrl() { return photoUrl; }
+    public void setPhotoUrl(String photoUrl) { this.photoUrl = photoUrl; }
+
+    public String getLanguageCode() { return languageCode; }
+    public void setLanguageCode(String languageCode) { this.languageCode = languageCode; }
+
+    public LocalDateTime getLastLogin() { return lastLogin; }
+    public void setLastLogin(LocalDateTime lastLogin) { this.lastLogin = lastLogin; }
 }

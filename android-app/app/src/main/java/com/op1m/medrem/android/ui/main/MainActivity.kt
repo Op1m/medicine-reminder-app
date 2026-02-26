@@ -77,14 +77,14 @@ class MainActivity : AppCompatActivity() {
         val expandedWidth = (panelWidth * 0.60).roundToInt() 
         val collapsedWidth = (panelWidth * 0.20).roundToInt()
 
-        val buttonHeightPx = (resources.displayMetrics.density * 48).roundToInt()
+        val buttonHeightPx = (resources.displayMetrics.density * 42).roundToInt()
         listOf(itemHome, itemCourses, itemProfile).forEach { item ->
             val lp = item.layoutParams
             lp.height = buttonHeightPx
             item.layoutParams = lp
         }
 
-        val iconSizePx = (resources.displayMetrics.density * 30).roundToInt()
+        val iconSizePx = (resources.displayMetrics.density * 24).roundToInt()
         listOf(iconHome, iconCourses, iconProfile).forEach { icon ->
             val lp = icon.layoutParams
             lp.width = iconSizePx

@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -204,4 +205,23 @@ public class UserServiceImpl implements UserService  {
         System.out.println("✅ UserService: Пользователь активирован: " + userId);
     }
 
+    @Override
+    public User findByTelegramId(Long telegramId) {
+        return userRepository.findByTelegramId(telegramId).orElse(null);
+    }
+
+    @Override
+    public User save(User user) {
+        if (user.getCreatedAt() == null) {
+            user.setCreatedAt(LocalDateTime.now());
+        }
+        user.setUpdatedAt(LocalDateTime.now());
+        return userRepository.save(user);
+    }
+
+    @Override
+    public User update(User user) {
+        user.setUpdatedAt(LocalDateTime.now());
+        return userRepository.save(user);
+    }
 }
