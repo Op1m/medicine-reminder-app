@@ -23,18 +23,17 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity security, UserService userService) throws Exception {
-        security
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, UserService userService) throws Exception {
+
+        http
                 .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(authz -> authz
+                .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
                         .requestMatchers("/api/users/register").permitAll()
-                        .requestMatchers("/api/users/me/**").authenticated()
-                        .anyRequest().authenticated()
-                )
-                .userDetailsService(userDetailsService(userService))
-                .httpBasic(httpBasic -> {});
-        return security.build();
+                        .anyRequest().permitAll()
+                );
+
+        return http.build();
     }
 
     @Bean
