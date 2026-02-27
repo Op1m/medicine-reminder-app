@@ -13,7 +13,7 @@ public class CorsConfig implements WebMvcConfigurer {
                 .allowedOrigins(
                         "https://op1m.github.io",
                         "http://localhost:8080",
-                        "https://mirtha-durable-semipneumatically.ngrok-free.dev",
+                        "https://medicine-reminder-app-t3u9.onrender.com",
                         "https://web.telegram.org",
                         "https://telegram.org"
                 )
