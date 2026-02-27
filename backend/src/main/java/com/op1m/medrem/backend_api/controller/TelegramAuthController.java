@@ -38,38 +38,58 @@ public class TelegramAuthController {
     }
 
     private ResponseEntity<?> handle(Map<String, String> data) {
+
         if (botToken == null || botToken.isBlank()) {
-            log.error("TELEGRAM BOT TOKEN is not configured");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("ok", false, "error", "server missing TELEGRAM_BOT_TOKEN"));
         }
 
-        log.debug("Incoming telegram auth data (keys and truncated values): {}", shortenedMap(data, 200));
-
         DebugInfo dbg = TelegramInitDataValidator.validateWithDebug(data, botToken);
 
         if (!dbg.ok) {
-            log.debug("Telegram init data validation failed. receivedKeys={}, note={}", dbg.receivedKeys, dbg.note);
-            log.debug("Validation debug summary: providedHash='{}', calcHex='{}', secretKey='{}'",
-                    truncate(dbg.providedHash, 100), truncate(dbg.calcHex, 100), truncate(dbg.secretKeyHex, 100));
-            log.debug("data_check_string (first 2000 chars):\n{}", truncate(dbg.dataCheckString, 2000));
-            if (dbg.error != null) log.debug("validation error reason: {}", dbg.error);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("ok", false, "error", "invalid init data"));
         }
 
-        Map<String, Object> user = extractUser(data);
-        if (user.isEmpty()) {
-            log.warn("Validated but no user info could be extracted. raw keys={}", data.keySet());
-            return ResponseEntity.status(HttpStatus.OK)
-                    .body(Map.of("ok", true, "user", Map.of()));
+        Map<String, String> unpacked = new HashMap<>();
+
+        if (data.containsKey("initData")) {
+            String raw = data.get("initData");
+            if (raw != null) {
+                String[] pairs = raw.split("&");
+                for (String p : pairs) {
+                    int idx = p.indexOf('=');
+                    if (idx <= 0) continue;
+                    String k = java.net.URLDecoder.decode(p.substring(0, idx), java.nio.charset.StandardCharsets.UTF_8);
+                    String v = java.net.URLDecoder.decode(p.substring(idx + 1), java.nio.charset.StandardCharsets.UTF_8);
+                    unpacked.put(k, v);
+                }
+            }
+        } else {
+            unpacked.putAll(data);
         }
 
-        log.info("Telegram login OK for id={} username={}", user.get("id"), user.get("username"));
-        Map<String, Object> result = new HashMap<>();
-        result.put("ok", true);
-        result.put("user", user);
-        return ResponseEntity.ok(result);
+        Map<String, Object> user = new LinkedHashMap<>();
+
+        if (unpacked.containsKey("user")) {
+            try {
+                Map<String, Object> parsed =
+                        new com.fasterxml.jackson.databind.ObjectMapper()
+                                .readValue(unpacked.get("user"), Map.class);
+
+                user.putAll(parsed);
+            } catch (Exception ignored) {}
+        }
+
+        if (user.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("ok", false, "error", "user not found in initData"));
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "ok", true,
+                "user", user
+        ));
     }
 
     private Map<String, Object> extractUser(Map<String, String> d) {
