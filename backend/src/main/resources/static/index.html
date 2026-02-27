@@ -57,6 +57,7 @@
 </div>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>
     const BACKEND = 'https://medicine-reminder-app-t3u9.onrender.com';
     const TOKEN_KEY = 'mr_token';
@@ -81,10 +82,8 @@
     function loadUserFromStorage() {
         const token = localStorage.getItem(TOKEN_KEY);
         const userStr = localStorage.getItem(USER_KEY);
-        if (token && userStr) {
+        if (userStr) {
             try { const user = JSON.parse(userStr); return { token, user }; } catch (e) { clearLocal(); }
-        } else if (userStr) {
-            try { const user = JSON.parse(userStr); return { token: null, user }; } catch(e){ clearLocal(); }
         }
         return null;
     }
@@ -129,34 +128,8 @@
         }
     }
 
-    function parseInitData(raw) {
-        if (!raw) return null;
-        if (typeof raw === 'string') {
-            const params = new URLSearchParams(raw);
-            const obj = {};
-            for (const [k, v] of params.entries()) {
-                obj[k] = v;
-            }
-            return obj;
-        }
-        if (typeof raw === 'object') {
-            const obj = {};
-            if (raw.user && typeof raw.user === 'object') {
-                Object.assign(obj, raw.user);
-            }
-            for (const k of Object.keys(raw)) {
-                if (k === 'user') continue;
-                const v = raw[k];
-                if (v === null || v === undefined) continue;
-                if (typeof v === 'object') obj[k] = JSON.stringify(v);
-                else obj[k] = String(v);
-            }
-            return obj;
-        }
-        return null;
-    }
-
-    async function postToBackend(payload) {
+    async function postInitDataString(initDataString) {
+        const payload = { initData: initDataString };
         const endpoints = [
             `${BACKEND}/api/auth/telegram`,
             `${BACKEND}/auth/telegram`
@@ -169,7 +142,6 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                if (res.status === 404) continue;
                 const data = await res.json().catch(() => null);
                 if (res.ok) return { ok: true, data, url };
                 return { ok: false, status: res.status, data, url };
@@ -180,53 +152,59 @@
         throw lastErr || new Error('No backend endpoints reachable');
     }
 
-    async function doAuthWithPayload(payload) {
+    async function doAuthWithInitDataString(initDataString) {
+        loadingSpinner.classList.remove('hidden');
+        unauthBlock.classList.add('hidden');
         try {
-            const result = await postToBackend(payload);
+            const result = await postInitDataString(initDataString);
             if (!result.ok) {
-                console.warn('Auth failed', result);
                 const errMsg = (result.data && (result.data.error || result.data.message)) || `HTTP ${result.status} at ${result.url}`;
                 throw new Error(errMsg);
             }
             const body = result.data || {};
             const user = body.user || body;
             const token = body.token || body.accessToken || null;
-            if (!user || (!user.id && !user.username)) {
-                throw new Error('Invalid user data from server');
-            }
+            if (!user || (!user.id && !user.username)) throw new Error('Invalid user data from server');
             saveTokenAndUser(token, user);
             showAuth(user);
             return { user, token };
         } catch (err) {
-            console.error('doAuthWithPayload error', err);
+            console.error('auth error', err);
+            clearLocal();
+            showUnauth();
             throw err;
         }
     }
 
-    async function loginWithTelegramOnce(parsed) {
-        if (!parsed) throw new Error('No init data to send');
-        loadingSpinner.classList.remove('hidden');
-        unauthBlock.classList.add('hidden');
+    async function loginWithTelegramAuto() {
+        if (!tg) {
+            showUnauth();
+            return;
+        }
+        const raw = tg.initData || tg.initDataUnsafe || null;
+        if (!raw) {
+            showUnauth();
+            return;
+        }
         try {
-            await doAuthWithPayload(parsed);
-        } catch (err) {
-            clearLocal();
-            alert('Не удалось войти: ' + (err.message || 'ошибка сервера'));
+            await doAuthWithInitDataString(raw);
+        } catch (e) {
+            console.warn('Auto login failed:', e.message);
             showUnauth();
         }
     }
 
-    async function loginWithTelegramManual() {
+    function loginWithTelegramManual() {
         if (!tg) {
             alert('Эта страница должна быть открыта через Telegram Web App.');
             return;
         }
-        const parsed = parseInitData(tg.initData || tg.initDataUnsafe);
-        if (!parsed) {
-            alert('Не удалось получить данные от Telegram.');
+        const raw = tg.initData || tg.initDataUnsafe || null;
+        if (!raw) {
+            alert('Не удалось получить initData от Telegram.');
             return;
         }
-        await loginWithTelegramOnce(parsed);
+        doAuthWithInitDataString(raw).catch(err => alert('Не удалось войти: ' + (err.message || 'ошибка сервера')));
     }
 
     function logout() {
@@ -234,25 +212,14 @@
         showUnauth();
     }
 
-    (async function init() {
+    (function init() {
         const saved = loadUserFromStorage();
         if (saved && saved.user) {
             showAuth(saved.user);
         } else {
             loadingSpinner.classList.remove('hidden');
-            const initRaw = (tg && (tg.initData || tg.initDataUnsafe)) || null;
-            const parsed = parseInitData(initRaw);
-            if (parsed) {
-                try {
-                    await loginWithTelegramOnce(parsed);
-                } catch (e) {
-                    showUnauth();
-                }
-            } else {
-                showUnauth();
-            }
+            loginWithTelegramAuto();
         }
-
         loginBtn.addEventListener('click', loginWithTelegramManual);
         logoutBtn.addEventListener('click', logout);
     })();
