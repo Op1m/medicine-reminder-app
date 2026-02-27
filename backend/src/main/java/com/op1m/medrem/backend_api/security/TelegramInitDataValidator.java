@@ -24,57 +24,101 @@ public final class TelegramInitDataValidator {
             dbg.error = "initData map is null";
             return dbg;
         }
-        Map<String, String> initData = new HashMap<>(initDataRaw);
 
-        if (initData.size() == 1 && initData.containsKey("initData")) {
-            String raw = initData.get("initData");
-            initData.clear();
-            if (raw != null) {
-                String[] pairs = raw.split("&");
+        String originalRawString = null;
+        Map<String, String> params = new HashMap<>(initDataRaw);
+
+        if (params.size() == 1 && params.containsKey("initData")) {
+            originalRawString = params.get("initData");
+            params.clear();
+            if (originalRawString != null) {
+                String[] pairs = originalRawString.split("&");
                 for (String p : pairs) {
                     int idx = p.indexOf('=');
                     if (idx <= 0) continue;
                     String k = urlDecodeSafe(p.substring(0, idx));
-                    String v = urlDecodeSafe(p.substring(idx + 1));
-                    initData.put(k, v);
+                    String vRaw = p.substring(idx + 1);
+                    String vDecoded = urlDecodeSafe(vRaw);
+                    params.put(k, vDecoded);
+                    dbg.rawPairs.put(k, vRaw);
+                    dbg.decodedPairs.put(k, vDecoded);
                 }
             }
             dbg.note = "unpacked initData string into params";
+            dbg.originalRawString = originalRawString;
+        } else {
+            for (Map.Entry<String, String> e : params.entrySet()) {
+                dbg.decodedPairs.put(e.getKey(), e.getValue());
+            }
         }
 
-        dbg.receivedKeys = new ArrayList<>(initData.keySet());
-        String providedHash = initData.get("hash");
+        dbg.receivedKeys = new ArrayList<>(params.keySet());
+        String providedHash = params.get("hash");
         dbg.providedHash = providedHash == null ? null : providedHash.trim();
-
         if (providedHash == null || providedHash.isEmpty()) {
             dbg.ok = false;
             dbg.error = "missing hash";
             return dbg;
         }
 
-        Map<String, String> copy = new HashMap<>(initData);
+        Map<String, String> copy = new HashMap<>(params);
         copy.remove("hash");
 
-        List<String> partsRaw = copy.entrySet().stream()
-                .filter(e -> e.getValue() != null)
-                .map(e -> e.getKey() + "=" + e.getValue())
-                .sorted()
-                .collect(Collectors.toList());
+        List<String> keys = copy.keySet().stream().sorted().collect(Collectors.toList());
 
-        dbg.parts = partsRaw;
+        List<String> baseParts = keys.stream().map(k -> k + "=" + (copy.get(k) == null ? "" : copy.get(k))).collect(Collectors.toList());
+        dbg.parts = baseParts;
+        dbg.dataCheckString = String.join("\n", baseParts);
 
-        List<String> normalizedParts = new ArrayList<>(partsRaw.size());
-        for (String kv : partsRaw) {
-            int idx = kv.indexOf('=');
-            String k = kv.substring(0, idx);
-            String v = kv.substring(idx + 1);
-            String normalized = normalizeValueForComparison(v);
-            normalizedParts.add(k + "=" + normalized);
+        List<Candidate> candidates = new ArrayList<>();
+
+        {
+            List<String> parts = new ArrayList<>();
+            for (String k : keys) parts.add(k + "=" + normalizeValueForComparison(copy.get(k)));
+            candidates.add(new Candidate("decoded_normalized", parts));
         }
 
-        dbg.normalizedParts = normalizedParts;
-        String dataCheckString = String.join("\n", normalizedParts);
-        dbg.dataCheckString = dataCheckString;
+        {
+            List<String> parts = new ArrayList<>();
+            for (String k : keys) {
+                String v = copy.get(k);
+                if (looksLikeJson(v)) v = escapeJsonSlashes(v);
+                parts.add(k + "=" + v);
+            }
+            candidates.add(new Candidate("decoded_with_escaped_slashes", parts));
+        }
+
+        if (dbg.rawPairs.size() > 0) {
+            List<String> parts = new ArrayList<>();
+            for (String k : keys) {
+                String raw = dbg.rawPairs.get(k);
+                if (raw == null) raw = urlEncodeSafe(copy.get(k));
+                parts.add(k + "=" + raw);
+            }
+            candidates.add(new Candidate("raw_percent_encoded", parts));
+        }
+
+        {
+            List<String> parts = new ArrayList<>();
+            for (String k : keys) {
+                String v = copy.get(k);
+                if (v != null) v = v.replace("\\\"", "\"").replace("\\/", "/");
+                parts.add(k + "=" + (v == null ? "" : v));
+            }
+            candidates.add(new Candidate("decoded_unescape_backslashes", parts));
+        }
+
+        {
+            List<String> parts = new ArrayList<>();
+            for (String k : keys) {
+                String v = copy.get(k);
+                if (k.equals("user") && v != null && v.contains("photo_url")) {
+                    v = v.replace("https://", "https:\\/\\/");
+                }
+                parts.add(k + "=" + (v == null ? "" : v));
+            }
+            candidates.add(new Candidate("decoded_photourl_escaped", parts));
+        }
 
         try {
             MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
@@ -83,28 +127,43 @@ public final class TelegramInitDataValidator {
 
             Mac hmac = Mac.getInstance("HmacSHA256");
             hmac.init(new SecretKeySpec(secretKey, "HmacSHA256"));
-            byte[] hmacBytes = hmac.doFinal(dataCheckString.getBytes(StandardCharsets.UTF_8));
-            dbg.calcHex = bytesToHexLower(hmacBytes);
 
-            String providedLower = providedHash.toLowerCase(Locale.ROOT);
-            dbg.ok = constantTimeEquals(dbg.calcHex, providedLower);
-
-            if (!dbg.ok) {
-                dbg.error = "hash_mismatch";
-                return dbg;
+            for (Candidate c : candidates) {
+                String dcs = String.join("\n", c.parts);
+                byte[] mac = hmac.doFinal(dcs.getBytes(StandardCharsets.UTF_8));
+                String hex = bytesToHexLower(mac);
+                c.calcHex = hex;
+                c.dataCheckString = dcs;
+                boolean match = constantTimeEquals(hex, dbg.providedHash.toLowerCase(Locale.ROOT));
+                c.match = match;
+                dbg.attempts.add(c);
+                if (match) {
+                    dbg.ok = true;
+                    dbg.matchedCandidate = c.name;
+                    dbg.calcHex = hex;
+                    dbg.dataCheckString = dcs;
+                    break;
+                }
             }
 
-            if (copy.containsKey("auth_date")) {
-                try {
-                    long auth = Long.parseLong(copy.get("auth_date"));
-                    long now = System.currentTimeMillis() / 1000L;
-                    if (Math.abs(now - auth) > 86400L) {
+            if (!dbg.ok) {
+                dbg.ok = false;
+                dbg.error = "hash_mismatch";
+                dbg.calcHex = dbg.attempts.isEmpty() ? null : dbg.attempts.get(0).calcHex;
+            } else {
+                // auth_date check
+                if (copy.containsKey("auth_date")) {
+                    try {
+                        long auth = Long.parseLong(copy.get("auth_date"));
+                        long now = System.currentTimeMillis() / 1000L;
+                        if (Math.abs(now - auth) > 86400L) {
+                            dbg.ok = false;
+                            dbg.error = "auth_date_expired";
+                        }
+                    } catch (NumberFormatException ex) {
                         dbg.ok = false;
-                        dbg.error = "auth_date_expired";
+                        dbg.error = "invalid_auth_date";
                     }
-                } catch (NumberFormatException ex) {
-                    dbg.ok = false;
-                    dbg.error = "invalid_auth_date";
                 }
             }
 
@@ -123,10 +182,19 @@ public final class TelegramInitDataValidator {
         return true;
     }
 
+    private static boolean looksLikeJson(String s) {
+        return s != null && ((s.startsWith("{") && s.endsWith("}")) || (s.startsWith("[") && s.endsWith("]")));
+    }
+
+    private static String escapeJsonSlashes(String s) {
+        if (s == null) return s;
+        return s.replace("/", "\\/");
+    }
+
     private static String normalizeValueForComparison(String v) {
         if (v == null) return "";
         String s = v;
-        if ((s.startsWith("{") && s.endsWith("}")) || (s.startsWith("[") && s.endsWith("]"))) {
+        if (looksLikeJson(s)) {
             s = s.replace("\\/", "/");
             s = s.replace("\r", "");
         }
@@ -139,6 +207,20 @@ public final class TelegramInitDataValidator {
         } catch (Exception e) {
             return s;
         }
+    }
+
+    private static String urlEncodeSafe(String s) {
+        if (s == null) return "";
+        StringBuilder sb = new StringBuilder();
+        for (byte b : s.getBytes(StandardCharsets.UTF_8)) {
+            int v = b & 0xff;
+            if ((v >= 0x30 && v <= 0x39) || (v >= 0x41 && v <= 0x5A) || (v >= 0x61 && v <= 0x7A) || v == 0x2D || v == 0x2E || v == 0x5F || v == 0x7E) {
+                sb.append((char) v);
+            } else {
+                sb.append(String.format("%%%02X", v));
+            }
+        }
+        return sb.toString();
     }
 
     private static String bytesToHexLower(byte[] bytes) {
@@ -159,12 +241,26 @@ public final class TelegramInitDataValidator {
         public boolean ok;
         public String error;
         public String note;
+        public String originalRawString;
         public List<String> receivedKeys;
         public List<String> parts;
-        public List<String> normalizedParts;
         public String dataCheckString;
         public String providedHash;
         public String calcHex;
         public String secretKeyHex;
+        public List<Candidate> attempts = new ArrayList<>();
+        public String matchedCandidate;
+        public Map<String, String> rawPairs = new LinkedHashMap<>();
+        public Map<String, String> decodedPairs = new LinkedHashMap<>();
+    }
+
+    public static final class Candidate {
+        public String name;
+        public List<String> parts;
+        public String calcHex;
+        public boolean match;
+        public String dataCheckString;
+        public Candidate(String name, List<String> parts) { this.name = name; this.parts = parts; }
+        @Override public String toString() { return "Candidate{" + name + ", match=" + match + ", calcHex=" + calcHex + "}"; }
     }
 }
