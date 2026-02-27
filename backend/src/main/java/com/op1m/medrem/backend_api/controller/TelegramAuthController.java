@@ -1,139 +1,70 @@
 package com.op1m.medrem.backend_api.controller;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.op1m.medrem.backend_api.dto.DTOMapper;
-import com.op1m.medrem.backend_api.dto.TelegramUserDTO;
-import com.op1m.medrem.backend_api.entity.User;
-import com.op1m.medrem.backend_api.security.JwtTokenProvider;
 import com.op1m.medrem.backend_api.security.TelegramInitDataValidator;
-import com.op1m.medrem.backend_api.service.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping({"/api/auth", "/"})
+@RequestMapping("/auth/telegram")
 public class TelegramAuthController {
 
-    private final UserService userService;
-    private final JwtTokenProvider tokenProvider;
-    private final PasswordEncoder passwordEncoder;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private static final Logger log = LoggerFactory.getLogger(TelegramAuthController.class);
 
-    @Value("${TELEGRAM_BOT_TOKEN:${app.telegram.bot-token:}}")
+    @Value("${telegram.bot.token:${TELEGRAM_BOT_TOKEN:}}")
     private String botToken;
 
-    public TelegramAuthController(UserService userService, JwtTokenProvider tokenProvider, PasswordEncoder passwordEncoder) {
-        this.userService = userService;
-        this.tokenProvider = tokenProvider;
-        this.passwordEncoder = passwordEncoder;
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> fromWidget(@RequestBody Map<String, Object> body) {
+        Map<String, String> flat = body.entrySet().stream()
+                .filter(e -> e.getValue() != null)
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> String.valueOf(e.getValue())));
+        return handle(flat);
     }
 
-    public static class InitDataRequest {
-        public String initData;
+    @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> fromRedirect(@RequestParam Map<String, String> params) {
+        return handle(params);
     }
 
-    @PostMapping(path = {"/telegram", "/auth/telegram"})
-    public ResponseEntity<?> loginWithTelegram(@RequestBody InitDataRequest body) {
-        System.out.println("=== /api/auth/telegram called ===");
-
-        if (body == null || body.initData == null || body.initData.isBlank()) {
-            System.out.println("❌ missing initData");
-            return ResponseEntity.badRequest().body(Map.of("error", "missing initData"));
-        }
-
-        String initData = body.initData;
-
-        System.out.println("raw body.initData: [" + initData + "]");
-
-        boolean ok = TelegramInitDataValidator.validateInitData(initData, botToken);
-        if (!ok) {
-            System.out.println("❌ invalid initData");
-            return ResponseEntity.status(401).body(Map.of("error", "invalid initData"));
+    private ResponseEntity<?> handle(Map<String, String> data) {
+        if (botToken == null || botToken.isBlank()) {
+            log.error("TELEGRAM BOT TOKEN is not configured");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("ok", false, "error", "server missing TELEGRAM_BOT_TOKEN"));
         }
 
         try {
-            var decodedParams = TelegramInitDataValidator.parseDecodedParams(initData);
-            String userJson = decodedParams.get("user");
-            if (userJson == null || userJson.isBlank()) {
-                System.out.println("❌ user json not present in initData");
-                return ResponseEntity.badRequest().body(Map.of("error", "cannot parse user data"));
+            boolean ok = TelegramInitDataValidator.validate(data, botToken);
+            if (!ok) {
+                log.debug("Telegram init data validation failed. data_check_keys={}", data.keySet());
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("ok", false, "error", "invalid init data"));
             }
 
-            JsonNode userNode = objectMapper.readTree(userJson);
+            Map<String, String> user = extractUser(data);
 
-            long tgId = userNode.has("id") ? userNode.get("id").asLong() : 0L;
-            String firstName = userNode.has("first_name") ? userNode.get("first_name").asText("") : "";
-            String lastName = userNode.has("last_name") ? userNode.get("last_name").asText("") : "";
-            String username = userNode.has("username") ? userNode.get("username").asText("") : "";
-            String photoUrl = userNode.has("photo_url") ? userNode.get("photo_url").asText("") : "";
-
-            if (tgId == 0L) {
-                System.out.println("❌ tgId parsed as 0");
-                return ResponseEntity.badRequest().body(Map.of("error", "cannot parse user id"));
-            }
-
-            User user = userService.findByTelegramId(tgId);
-            if (user == null) {
-                user = new User();
-                user.setTelegramId(tgId);
-                user.setUsername((username != null && !username.isBlank()) ? username : "tg_" + tgId);
-                user.setFirstName(firstName);
-                user.setLastName(lastName);
-                user.setPhotoUrl(photoUrl);
-                user.setEmail("telegram_" + tgId + "@placeholder.local");
-                String randomPassword = UUID.randomUUID().toString();
-                user.setPassword(passwordEncoder.encode(randomPassword));
-                user = userService.save(user);
-                System.out.println("Created new user id=" + (user.getId() != null ? user.getId() : "n/a") + " tg=" + tgId);
-            } else {
-                user.setFirstName(firstName);
-                user.setLastName(lastName);
-                if (username != null && !username.isBlank()) user.setUsername(username);
-                user.setPhotoUrl(photoUrl);
-                user = userService.update(user);
-                System.out.println("Updated user id=" + user.getId() + " tg=" + tgId);
-            }
-
-            String token = tokenProvider.generateToken(user);
-
-            return ResponseEntity.ok(Map.of(
-                    "token", token,
-                    "user", DTOMapper.toUserDTO(user)
-            ));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body(Map.of("error", "internal_error"));
+            log.info("Telegram login OK for id={} username={}", user.get("id"), user.get("username"));
+            return ResponseEntity.ok(Map.of("ok", true, "user", user));
+        } catch (Exception ex) {
+            log.error("Error validating telegram init data", ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("ok", false, "error", ex.getMessage()));
         }
     }
 
-    @PostMapping("/telegram/debug")
-    public ResponseEntity<?> debugLogin(@RequestBody TelegramUserDTO dto) {
-        User user = userService.findByTelegramId(dto.getId());
-        if (user == null) {
-            user = new User();
-            user.setTelegramId(dto.getId());
-            user.setUsername(dto.getUsername() == null ? "tg_" + dto.getId() : dto.getUsername());
-            user.setFirstName(dto.getFirstName());
-            user.setLastName(dto.getLastName());
-            user.setPhotoUrl(dto.getPhotoUrl());
-            user.setEmail("telegram_" + dto.getId() + "@placeholder.local");
-            String randomPassword = UUID.randomUUID().toString();
-            user.setPassword(passwordEncoder.encode(randomPassword));
-            user = userService.save(user);
-        } else {
-            user.setFirstName(dto.getFirstName());
-            user.setLastName(dto.getLastName());
-            if (dto.getUsername() != null) user.setUsername(dto.getUsername());
-            user.setPhotoUrl(dto.getPhotoUrl());
-            user = userService.update(user);
+    private Map<String, String> extractUser(Map<String, String> d) {
+        Map<String, String> u = new HashMap<>();
+        for (String k : List.of("id", "first_name", "last_name", "username", "photo_url", "auth_date")) {
+            if (d.containsKey(k)) u.put(k, d.get(k));
         }
-        String token = tokenProvider.generateToken(user);
-        return ResponseEntity.ok(Map.of("token", token, "user", DTOMapper.toUserDTO(user)));
+        return u;
     }
 }

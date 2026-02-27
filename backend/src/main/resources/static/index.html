@@ -5,175 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Medicine Reminder</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-        }
-
-        body {
-            min-height: 100vh;
-            background: linear-gradient(135deg, #7FEEDB 0%, #6CC9FF 50%, #3FA1FF 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 400px;
-            background: white;
-            border-radius: 28px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-            padding: 32px 24px;
-            transition: all 0.3s ease;
-        }
-
-        @media (max-width: 480px) {
-            body {
-                padding: 8px;
-            }
-            .container {
-                border-radius: 24px;
-                padding: 28px 20px;
-            }
-        }
-
-        .header {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-bottom: 32px;
-        }
-
-        .logo {
-            width: 70px;
-            height: 70px;
-            border-radius: 18px;
-            background: linear-gradient(135deg, #7FEEDB, #3FA1FF);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 700;
-            font-size: 28px;
-            margin-bottom: 16px;
-            box-shadow: 0 10px 20px rgba(63,161,255,0.3);
-        }
-
-        h1 {
-            font-size: 24px;
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 6px;
-        }
-
-        .subtitle {
-            font-size: 14px;
-            color: #64748b;
-            text-align: center;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            margin-bottom: 28px;
-            padding: 12px 16px;
-            background: #f8fafc;
-            border-radius: 20px;
-        }
-
-        .avatar {
-            width: 60px;
-            height: 60px;
-            border-radius: 18px;
-            background: linear-gradient(135deg, #cfeeff, #e8fefb);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 24px;
-            color: #075985;
-            overflow: hidden;
-            background-size: cover;
-            background-position: center;
-            flex-shrink: 0;
-        }
-
-        .user-details {
-            flex: 1;
-        }
-
-        .user-name {
-            font-weight: 700;
-            font-size: 18px;
-            color: #0f172a;
-            margin-bottom: 4px;
-        }
-
-        .user-nick {
-            font-size: 13px;
-            color: #64748b;
-        }
-
-        .btn {
-            display: block;
-            width: 100%;
-            padding: 16px;
-            border: none;
-            border-radius: 20px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            text-align: center;
-            background: linear-gradient(90deg, #7FEEDB, #6CC9FF, #3FA1FF);
-            color: white;
-            box-shadow: 0 10px 20px rgba(63,161,255,0.3);
-        }
-
-        .btn:active {
-            transform: scale(0.98);
-            box-shadow: 0 5px 10px rgba(63,161,255,0.4);
-        }
-
-        .btn-logout {
-            background: white;
-            color: #3FA1FF;
-            border: 1px solid rgba(63,161,255,0.3);
-            box-shadow: none;
-            margin-top: 12px;
-        }
-
-        .btn-logout:active {
-            background: #f1f5f9;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        .status-message {
-            text-align: center;
-            font-size: 14px;
-            color: #64748b;
-            margin-top: 16px;
-        }
-
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #e2e8f0;
-            border-top-color: #3FA1FF;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        body { min-height: 100vh; background: linear-gradient(135deg, #7FEEDB 0%, #6CC9FF 50%, #3FA1FF 100%); display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .container { width: 100%; max-width: 400px; background: white; border-radius: 28px; box-shadow: 0 20px 40px rgba(0,0,0,0.15); padding: 32px 24px; transition: all 0.3s ease; }
+        @media (max-width: 480px) { body { padding: 8px; } .container { border-radius: 24px; padding: 28px 20px; } }
+        .header { display: flex; flex-direction: column; align-items: center; margin-bottom: 32px; }
+        .logo { width: 70px; height: 70px; border-radius: 18px; background: linear-gradient(135deg, #7FEEDB, #3FA1FF); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 28px; margin-bottom: 16px; box-shadow: 0 10px 20px rgba(63,161,255,0.3); }
+        h1 { font-size: 24px; font-weight: 700; color: #1e293b; margin-bottom: 6px; }
+        .subtitle { font-size: 14px; color: #64748b; text-align: center; }
+        .user-info { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; padding: 12px 16px; background: #f8fafc; border-radius: 20px; }
+        .avatar { width: 60px; height: 60px; border-radius: 18px; background: linear-gradient(135deg, #cfeeff, #e8fefb); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 24px; color: #075985; overflow: hidden; background-size: cover; background-position: center; flex-shrink: 0; }
+        .user-details { flex: 1; }
+        .user-name { font-weight: 700; font-size: 18px; color: #0f172a; margin-bottom: 4px; }
+        .user-nick { font-size: 13px; color: #64748b; }
+        .btn { display: block; width: 100%; padding: 16px; border: none; border-radius: 20px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; text-align: center; background: linear-gradient(90deg, #7FEEDB, #6CC9FF, #3FA1FF); color: white; box-shadow: 0 10px 20px rgba(63,161,255,0.3); }
+        .btn:active { transform: scale(0.98); box-shadow: 0 5px 10px rgba(63,161,255,0.4); }
+        .btn-logout { background: white; color: #3FA1FF; border: 1px solid rgba(63,161,255,0.3); box-shadow: none; margin-top: 12px; }
+        .btn-logout:active { background: #f1f5f9; }
+        .hidden { display: none !important; }
+        .status-message { text-align: center; font-size: 14px; color: #64748b; margin-top: 16px; }
+        .spinner { width: 40px; height: 40px; border: 3px solid #e2e8f0; border-top-color: #3FA1FF; border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto; }
         .spinner.hidden { display: none; }
-
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
@@ -222,20 +74,17 @@
     let tg = null;
     if (window.Telegram?.WebApp) {
         tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
+        try { tg.ready(); } catch(e) {}
+        try { tg.expand(); } catch(e) {}
     }
 
     function loadUserFromStorage() {
         const token = localStorage.getItem(TOKEN_KEY);
         const userStr = localStorage.getItem(USER_KEY);
         if (token && userStr) {
-            try {
-                const user = JSON.parse(userStr);
-                return { token, user };
-            } catch (e) {
-                clearLocal();
-            }
+            try { const user = JSON.parse(userStr); return { token, user }; } catch (e) { clearLocal(); }
+        } else if (userStr) {
+            try { const user = JSON.parse(userStr); return { token: null, user }; } catch(e){ clearLocal(); }
         }
         return null;
     }
@@ -246,8 +95,8 @@
     }
 
     function saveTokenAndUser(token, user) {
-        localStorage.setItem(TOKEN_KEY, token);
-        localStorage.setItem(USER_KEY, JSON.stringify(user));
+        if (token) localStorage.setItem(TOKEN_KEY, token);
+        if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
     }
 
     function showUnauth() {
@@ -261,51 +110,123 @@
         unauthBlock.classList.add('hidden');
         authBlock.classList.remove('hidden');
 
-        const firstName = user.firstName || '';
-        const lastName = user.lastName || '';
+        const firstName = user.first_name || user.firstName || '';
+        const lastName = user.last_name || user.lastName || '';
         const fullName = firstName + (lastName ? ' ' + lastName : '');
         userNameEl.innerText = fullName || user.username || 'Telegram User';
 
-        userNickEl.innerText = user.username ? '@' + user.username : 'id: ' + (user.telegramId || user.id || '—');
+        userNickEl.innerText = user.username ? '@' + user.username : 'id: ' + (user.id || user.telegramId || '—');
 
-        if (user.photoUrl) {
-            avatarEl.style.backgroundImage = `url(${user.photoUrl})`;
+        const photo = user.photo_url || user.photoUrl || user.photo;
+        if (photo) {
+            avatarEl.style.backgroundImage = `url(${photo})`;
             avatarEl.style.backgroundSize = 'cover';
             avatarEl.innerText = '';
         } else {
             avatarEl.style.backgroundImage = '';
-            avatarEl.innerText = (firstName?.[0] || user.username?.[0] || '👤').toUpperCase();
+            const ch = (firstName && firstName[0]) || (user.username && user.username[0]) || '👤';
+            avatarEl.innerText = ch.toUpperCase();
         }
     }
 
-    async function loginWithTelegram() {
-        if (!tg || !tg.initData) {
+    function parseInitData(raw) {
+        if (!raw) return null;
+        if (typeof raw === 'string') {
+            const params = new URLSearchParams(raw);
+            const obj = {};
+            for (const [k, v] of params.entries()) {
+                obj[k] = v;
+            }
+            return obj;
+        }
+        if (typeof raw === 'object') {
+            const obj = {};
+            if (raw.user && typeof raw.user === 'object') {
+                Object.assign(obj, raw.user);
+            }
+            for (const k of Object.keys(raw)) {
+                if (k === 'user') continue;
+                const v = raw[k];
+                if (v === null || v === undefined) continue;
+                if (typeof v === 'object') obj[k] = JSON.stringify(v);
+                else obj[k] = String(v);
+            }
+            return obj;
+        }
+        return null;
+    }
+
+    async function postToBackend(payload) {
+        const endpoints = [
+            `${BACKEND}/api/auth/telegram`,
+            `${BACKEND}/auth/telegram`
+        ];
+        let lastErr = null;
+        for (const url of endpoints) {
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.status === 404) continue;
+                const data = await res.json().catch(() => null);
+                if (res.ok) return { ok: true, data, url };
+                return { ok: false, status: res.status, data, url };
+            } catch (err) {
+                lastErr = err;
+            }
+        }
+        throw lastErr || new Error('No backend endpoints reachable');
+    }
+
+    async function doAuthWithPayload(payload) {
+        try {
+            const result = await postToBackend(payload);
+            if (!result.ok) {
+                console.warn('Auth failed', result);
+                const errMsg = (result.data && (result.data.error || result.data.message)) || `HTTP ${result.status} at ${result.url}`;
+                throw new Error(errMsg);
+            }
+            const body = result.data || {};
+            const user = body.user || body;
+            const token = body.token || body.accessToken || null;
+            if (!user || (!user.id && !user.username)) {
+                throw new Error('Invalid user data from server');
+            }
+            saveTokenAndUser(token, user);
+            showAuth(user);
+            return { user, token };
+        } catch (err) {
+            console.error('doAuthWithPayload error', err);
+            throw err;
+        }
+    }
+
+    async function loginWithTelegramOnce(parsed) {
+        if (!parsed) throw new Error('No init data to send');
+        loadingSpinner.classList.remove('hidden');
+        unauthBlock.classList.add('hidden');
+        try {
+            await doAuthWithPayload(parsed);
+        } catch (err) {
+            clearLocal();
+            alert('Не удалось войти: ' + (err.message || 'ошибка сервера'));
+            showUnauth();
+        }
+    }
+
+    async function loginWithTelegramManual() {
+        if (!tg) {
             alert('Эта страница должна быть открыта через Telegram Web App.');
             return;
         }
-
-        loadingSpinner.classList.remove('hidden');
-        unauthBlock.classList.add('hidden');
-
-        try {
-            const response = await fetch(`${BACKEND}/api/auth/telegram`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ initData: tg.initData })
-            });
-
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.error || 'Ошибка входа');
-            }
-
-            saveTokenAndUser(data.token, data.user);
-            showAuth(data.user);
-        } catch (err) {
-            console.error(err);
-            alert('Не удалось войти. Попробуйте позже.');
-            showUnauth();
+        const parsed = parseInitData(tg.initData || tg.initDataUnsafe);
+        if (!parsed) {
+            alert('Не удалось получить данные от Telegram.');
+            return;
         }
+        await loginWithTelegramOnce(parsed);
     }
 
     function logout() {
@@ -313,15 +234,26 @@
         showUnauth();
     }
 
-    (function init() {
+    (async function init() {
         const saved = loadUserFromStorage();
-        if (saved) {
+        if (saved && saved.user) {
             showAuth(saved.user);
         } else {
-            showUnauth();
+            loadingSpinner.classList.remove('hidden');
+            const initRaw = (tg && (tg.initData || tg.initDataUnsafe)) || null;
+            const parsed = parseInitData(initRaw);
+            if (parsed) {
+                try {
+                    await loginWithTelegramOnce(parsed);
+                } catch (e) {
+                    showUnauth();
+                }
+            } else {
+                showUnauth();
+            }
         }
 
-        loginBtn.addEventListener('click', loginWithTelegram);
+        loginBtn.addEventListener('click', loginWithTelegramManual);
         logoutBtn.addEventListener('click', logout);
     })();
 </script>
