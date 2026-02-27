@@ -1,37 +1,264 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Medicine Reminder — Telegram Login</title>
+
+    <style>
+        :root{
+            --bg:#f6fbff;
+            --card:#ffffff;
+            --accent:#3FA1FF;
+            --muted:#6b7280;
+            --success:#10b981;
+            --danger:#ef4444;
+            --shadow: 0 6px 18px rgba(15,23,42,0.08);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+        }
+        body{ margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg,#f0f9ff, #fbfcff); color:#0f172a; }
+        .wrap{ width:100%; max-width:920px; padding:28px; box-sizing:border-box; }
+        .card{ background:var(--card); border-radius:14px; padding:26px; box-shadow:var(--shadow); display:grid; gap:18px; }
+        header{ display:flex; gap:12px; align-items:center; }
+        .logo{ width:56px; height:56px; border-radius:12px; background:linear-gradient(90deg,#7FEEDB,#3FA1FF); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:20px; }
+        h1{ margin:0; font-size:20px; }
+        p.lead{ margin:0; color:var(--muted); font-size:13px; }
+
+        .controls{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+        button{ background:var(--accent); color:white; border:none; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600; box-shadow: 0 6px 24px rgba(63,161,255,0.12); }
+        button.ghost{ background:transparent; color:var(--accent); box-shadow:none; border:1px solid rgba(63,161,255,0.12); }
+        button.warn{ background:var(--danger); box-shadow:none; }
+        .status{ padding:10px 12px; border-radius:10px; background:#f8fafc; color:var(--muted); font-size:14px; display:inline-block; }
+        .row{ display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+
+        .user-card{ display:flex; gap:12px; align-items:center; padding:12px; border-radius:10px; background:#f8fbff; }
+        .avatar{ width:56px; height:56px; border-radius:10px; background:linear-gradient(90deg,#cfeeff,#e8fefb); display:flex; align-items:center; justify-content:center; font-weight:700; color:#075985; }
+        .meta{ display:flex; flex-direction:column; gap:2px; }
+        .meta .name{ font-weight:700; }
+        .meta .sub{ color:var(--muted); font-size:13px; }
+
+        .small{ font-size:13px; color:var(--muted); }
+        .muted{ color:var(--muted); }
+
+        textarea, input { width:100%; padding:10px; border-radius:8px; border:1px solid #e6eef9; background:white; box-sizing:border-box; font-family:monospace; font-size:13px; }
+        .grid{ display:grid; grid-template-columns:1fr 340px; gap:18px; align-items:start; }
+        pre { background:#0b1220; color:#cfe8ff; padding:12px; border-radius:8px; overflow:auto; max-height:220px; }
+        footer{ margin-top:6px; color:var(--muted); font-size:12px; }
+        @media (max-width:880px){ .grid{ grid-template-columns:1fr; } .card{ padding:18px; } }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="card">
+        <header>
+            <div class="logo">MR</div>
+            <div>
+                <h1>Medicine Reminder</h1>
+                <p class="lead">Войти через Telegram Web App — быстрый безпарольный вход</p>
+            </div>
+        </header>
+
+        <div class="grid">
+            <div>
+                <div class="row controls">
+                    <button id="loginBtn">Войти через Telegram</button>
+                    <button id="logoutBtn" class="ghost" style="display:none">Выйти</button>
+                    <div id="status" class="status">Инициализация...</div>
+                </div>
+
+                <section style="margin-top:12px;">
+                    <h3 style="margin:8px 0 6px 0;">Пользователь</h3>
+                    <div id="userArea" class="user-card" style="display:none">
+                        <div id="avatar" class="avatar">UI</div>
+                        <div class="meta">
+                            <div id="uname" class="name">—</div>
+                            <div id="usub" class="sub">—</div>
+                        </div>
+                    </div>
+                    <div id="noUser" class="small muted" style="margin-top:6px">Пользователь не авторизован.</div>
+                </section>
+
+                <section style="margin-top:12px;">
+                    <h3 style="margin:8px 0 6px 0;">Логи / Ответы сервера</h3>
+                    <pre id="logArea">Здесь будут показываться логи и ответы сервера.</pre>
+                </section>
+
+                <footer>
+                    <div class="small muted">Если вы тестируете в обычном браузере — initData будет отсутствовать. Откройте страницу через кнопку бота в Telegram (Web App) для реального логина.</div>
+                </footer>
+            </div>
+
+            <div>
+                <h3 style="margin:0 0 8px 0;">Отладка / ручная отправка initData</h3>
+                <div class="small muted" style="margin-bottom:8px">Полезно для тестов в браузере: вставьте сюда сгенерированную строку initData и отправьте.</div>
+                <textarea id="initDataInput" rows="8" placeholder="Вставьте сюда initData (raw query string) для теста"></textarea>
+                <div style="display:flex; gap:8px; margin-top:8px;">
+                    <button id="sendManual">Отправить initData (ручной)</button>
+                    <button id="clearLog" class="ghost">Очистить лог</button>
+                </div>
+
+                <h4 style="margin-top:14px">Текущее окружение</h4>
+                <div class="small muted">
+                    BACKEND: <code id="backendDisplay"></code><br>
+                    Важно: отправка работает только если initData — строка (raw) и подпись корректна.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>
-    const BACKEND = 'https://medicine-reminder-app-t3u9.onrender.com'; // твой render URL
+    const BACKEND = 'https://medicine-reminder-app-t3u9.onrender.com'; // <- поменяй при необходимости
+    const TOKEN_KEY = 'mr_token';
+    const USER_KEY = 'mr_user';
 
-    function setStatus(t){ document.getElementById('status').innerText = t; }
+    const statusEl = document.getElementById('status');
+    const logEl = document.getElementById('logArea');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const initDataInput = document.getElementById('initDataInput');
+    const sendManualBtn = document.getElementById('sendManual');
+    const clearLogBtn = document.getElementById('clearLog');
+    const backendDisplay = document.getElementById('backendDisplay');
+    const userArea = document.getElementById('userArea');
+    const noUser = document.getElementById('noUser');
+    const avatarEl = document.getElementById('avatar');
+    const unameEl = document.getElementById('uname');
+    const usubEl = document.getElementById('usub');
 
-    async function sendInitData(initData){
-        setStatus('Авторизация...');
+    backendDisplay.innerText = BACKEND;
+
+    function setStatus(text, kind){
+        statusEl.innerText = text;
+        if(kind === 'ok') statusEl.style.background = '#ecfdf5';
+        else if(kind === 'err') statusEl.style.background = '#fff1f2';
+        else statusEl.style.background = '#f8fafc';
+    }
+
+    function log(...args){
+        const s = args.map(a => (typeof a === 'object' ? JSON.stringify(a, null, 2) : a)).join(' ');
+        logEl.innerText = (new Date()).toLocaleTimeString() + ' — ' + s + '\n' + logEl.innerText;
+    }
+
+    function setUser(user){
+        if(!user){
+            userArea.style.display = 'none';
+            noUser.style.display = 'block';
+            logoutBtn.style.display = 'none';
+            loginBtn.style.display = 'inline-block';
+            return;
+        }
+        noUser.style.display = 'none';
+        userArea.style.display = 'flex';
+        logoutBtn.style.display = 'inline-block';
+        loginBtn.style.display = 'none';
+        unameEl.innerText = (user.firstName ? user.firstName + (user.lastName ? ' ' + user.lastName : '') : user.username || 'Telegram user');
+        usubEl.innerText = user.username ? '@' + user.username : ('id: ' + (user.telegramId || user.id || '?'));
+        if(user.photoUrl){
+            avatarEl.style.backgroundImage = `url(${user.photoUrl})`;
+            avatarEl.style.backgroundSize = 'cover';
+            avatarEl.innerText = '';
+        } else {
+            avatarEl.style.backgroundImage = '';
+            avatarEl.innerText = ((user.firstName||'')[0] || (user.username||'')[0] || 'U').toUpperCase();
+        }
+    }
+
+    function saveTokenAndUser(token, user){
+        if(token) localStorage.setItem(TOKEN_KEY, token);
+        if(user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+    }
+    function clearLocal(){
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+    }
+    function loadUserFromStorage(){
+        const s = localStorage.getItem(USER_KEY);
+        if(!s) return null;
+        try { return JSON.parse(s); } catch(e){ return null; }
+    }
+
+    const savedUser = loadUserFromStorage();
+    if(savedUser) setUser(savedUser);
+    else setUser(null);
+
+    async function sendInitDataToBackend(initData){
+        setStatus('Отправка initData...', '');
+        log('Отправка initData на', BACKEND + '/api/auth/telegram');
         try {
             const res = await fetch(BACKEND + '/api/auth/telegram', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ initData: initData })
+                body: JSON.stringify({ initData })
             });
-            const json = await res.json().catch(()=>null);
-            if (!res.ok) {
-                setStatus('Auth failed: ' + (json?.error || res.status + ' ' + res.statusText));
-                console.log('Server response (non-ok):', res.status, json);
-                return;
+            const j = await res.json().catch(()=>null);
+            if(!res.ok){
+                setStatus('Auth failed: ' + (j?.error || res.status + ' ' + res.statusText), 'err');
+                log('Server response (error):', res.status, j);
+                return { ok:false, resp:j, status:res.status };
             }
-            localStorage.setItem('token', json.token);
-            setStatus('Вход успешен: ' + (json.user?.username || json.user?.firstName));
-        } catch (e) {
-            console.error(e);
-            setStatus('Ошибка сети при auth');
+            setStatus('Вход успешен', 'ok');
+            log('Server response (ok):', j);
+            if(j?.token) saveTokenAndUser(j.token, j.user);
+            setUser(j.user);
+            return { ok:true, resp:j };
+        } catch(e){
+            setStatus('Ошибка сети при auth', 'err');
+            log('Network error:', e && (e.stack || e.message || e));
+            return { ok:false, error:e };
         }
     }
 
-    document.getElementById('loginBtn').addEventListener('click', async ()=> {
+    loginBtn.addEventListener('click', async ()=>{
         const initData = (window.Telegram && Telegram.WebApp) ? Telegram.WebApp.initData : undefined;
         console.log('initData (from Telegram.WebApp):', initData);
-        if (!initData) {
+        if(!initData){
             setStatus('initData не найден. Откройте страницу через кнопку бота в Telegram (Web App).');
+            log('initData отсутствует в window.Telegram.WebApp — тестируйте через кнопку бота или используйте ручную отправку.');
             return;
         }
-        await sendInitData(initData);
+        await sendInitDataToBackend(initData);
     });
+
+    logoutBtn.addEventListener('click', ()=>{
+        clearLocal();
+        setUser(null);
+        setStatus('Вы вышли');
+        log('Пользователь вышел');
+    });
+
+    sendManualBtn.addEventListener('click', async ()=>{
+        const v = initDataInput.value && initDataInput.value.trim();
+        if(!v){ setStatus('Вставьте initData в поле слева для отправки'); return; }
+        setStatus('Отправка ручного initData...');
+        log('Ручная отправка initData (dev):', v);
+        await sendInitDataToBackend(v);
+    });
+
+    clearLogBtn.addEventListener('click', ()=> logEl.innerText = '');
+
+    (function initTelegramUI(){
+        if(window.Telegram && Telegram.WebApp){
+            try {
+                Telegram.WebApp.ready();
+                setStatus('Открыто в Telegram WebApp');
+                log('Telegram WebApp detected. initDataUnsafe (dev):', Telegram.WebApp.initDataUnsafe);
+                if(Telegram.WebApp.initData) {
+                    initDataInput.value = Telegram.WebApp.initData;
+                    log('initData (raw) available and prefilled into manual box (for debugging).');
+                } else {
+                    log('initData not present yet; ensure you opened via bot and authorized.');
+                }
+            } catch(e){
+                log('Ошибка инициализации Telegram.WebApp:', e);
+            }
+        } else {
+            setStatus('Откройте страницу через кнопку бота в Telegram (Web App).');
+            log('Telegram.WebApp not present — open inside Telegram to get initData');
+        }
+    })();
+
 </script>
+</body>
+</html>
