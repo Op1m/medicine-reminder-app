@@ -1,41 +1,119 @@
 <!doctype html>
-<html>
+<html lang="ru">
 <head>
-    <meta charset="utf-8">
-    <title>Medicine Reminder — Demo Telegram Login</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Medicine Reminder — Telegram Login</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f4f7fb; }
+        .card { width: 360px; background:white; border-radius:12px; box-shadow:0 6px 20px rgba(30,40,60,0.08); padding:20px; text-align:center; }
+        h1 { font-size:18px; margin:0 0 8px; }
+        p { color:#555; margin:0 0 16px; font-size:14px; }
+        .btn { display:inline-block;padding:10px 16px;border-radius:10px;background:#3AA0FF;color:white;border:none;font-weight:600;cursor:pointer;margin:8px 4px; }
+        .btn.secondary { background:#F0F4FF;color:#223; }
+        .status { margin-top:12px;color:#333;font-weight:600; }
+        .small { font-size:13px;color:#777;margin-top:8px; }
+        img.avatar { width:64px;height:64px;border-radius:50%;object-fit:cover;margin-bottom:8px; }
+    </style>
 </head>
 <body>
-<h1>Medicine Reminder — Telegram WebApp Demo</h1>
-<div id="status">Инициализация...</div>
-<button id="loginBtn">Login via Telegram (send initData)</button>
+<div class="card">
+    <h1>Medicine Reminder</h1>
+    <p>Войдите через Telegram, чтобы видеть напоминания о приёме таблеток.</p>
+
+    <div id="userBlock" style="display:none">
+        <img id="avatar" class="avatar" src="" alt="avatar" />
+        <div id="username" style="font-weight:700"></div>
+        <div id="fullname" class="small"></div>
+        <button id="logoutBtn" class="btn secondary">Выйти</button>
+    </div>
+
+    <div id="loginBlock">
+        <button id="loginBtn" class="btn">Войти через Telegram</button>
+        <div class="small" id="hint">Открой это в Telegram WebApp для автологина.</div>
+    </div>
+
+    <div id="status" class="status"></div>
+</div>
 
 <script>
     const BACKEND = 'https://medicine-reminder-app-t3u9.onrender.com';
-    function init(){
-        if (window.Telegram && Telegram.WebApp) {
-            document.getElementById('status').innerText = 'Telegram WebApp ready';
-        } else {
-            document.getElementById('status').innerText = 'Open this page inside Telegram (WebApp)';
+    const tokenKey = 'medrem_token';
+
+    function showStatus(text) { document.getElementById('status').innerText = text; }
+
+    async function loginTelegram(initData) {
+        showStatus('Авторизация...');
+        try {
+            const resp = await fetch(BACKEND + '/auth/telegram', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ initData })
+            });
+            const json = await resp.json();
+            if (resp.ok) {
+                localStorage.setItem(tokenKey, json.token);
+                const user = json.user;
+                showUser(user);
+                showStatus('Успешно: ' + (user.username || user.firstName || 'user'));
+                if (window.Telegram && Telegram.WebApp) {
+                }
+            } else {
+                console.error('Auth failed', json);
+                showStatus('Auth failed: ' + (json.error || JSON.stringify(json)));
+            }
+        } catch (e) {
+            console.error(e);
+            showStatus('Ошибка сети при auth');
         }
     }
-    init();
 
-    document.getElementById('loginBtn').addEventListener('click', async ()=>{
-        const initData = window.Telegram.WebApp.initData;
-        console.log('initData=', initData);
-        const resp = await fetch(BACKEND + '/auth/telegram', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ initData })
-        });
-        const json = await resp.json();
-        console.log(json);
-        if (resp.ok) {
-            localStorage.setItem('token', json.token);
-            document.getElementById('status').innerText = 'Logged as ' + json.user.username;
+    function showUser(user) {
+        if (!user) return;
+        document.getElementById('loginBlock').style.display = 'none';
+        document.getElementById('userBlock').style.display = 'block';
+        document.getElementById('username').innerText = user.username || ('tg:' + user.telegramId);
+        document.getElementById('fullname').innerText = (user.firstName || '') + (user.lastName? ' ' + user.lastName : '');
+        if (user.photoUrl) document.getElementById('avatar').src = user.photoUrl;
+        else document.getElementById('avatar').style.display = 'none';
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        localStorage.removeItem(tokenKey);
+        document.getElementById('userBlock').style.display = 'none';
+        document.getElementById('loginBlock').style.display = 'block';
+        showStatus('Выход выполнен');
+    });
+
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+        if (window.Telegram && Telegram.WebApp) {
+            const initData = Telegram.WebApp.initData;
+            if (!initData) {
+                showStatus('initData не найден. Откройте этот сайт внутри Telegram WebApp.');
+                return;
+            }
+            await loginTelegram(initData);
         } else {
-            document.getElementById('status').innerText = 'Auth failed: ' + JSON.stringify(json);
+            showStatus('Откройте этот сайт ВНУТРИ Telegram (через кнопку Web App у бота).');
+        }
+    });
+
+    window.addEventListener('load', async () => {
+        const token = localStorage.getItem(tokenKey);
+        if (token) {
+            showStatus('Вход уже выполнен');
+        }
+        if (window.Telegram && Telegram.WebApp) {
+            showStatus('Открыт в Telegram WebApp');
+            const initData = Telegram.WebApp.initData;
+            if (initData) {
+                await loginTelegram(initData);
+            } else {
+                showStatus('initData отсутствует — попробуй нажать кнопку "Войти"');
+            }
+        } else {
+            showStatus('Откройте страницу через Web App внутри Telegram.');
         }
     });
 </script>

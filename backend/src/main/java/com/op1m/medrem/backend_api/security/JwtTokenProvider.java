@@ -1,13 +1,15 @@
 package com.op1m.medrem.backend_api.security;
 
 import com.op1m.medrem.backend_api.entity.User;
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import jakarta.annotation.PostConstruct;
+import java.security.Key;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 
 @Component
 public class JwtTokenProvider {
@@ -15,42 +17,27 @@ public class JwtTokenProvider {
     @Value("${app.jwt.secret}")
     private String jwtSecret;
 
-    @Value("${app.jwt.expiration}")
-    private int jwtExpiration;
+    private final long validityInMs = 7 * 24 * 60 * 60 * 1000L;
+    private Key key;
+
+    @PostConstruct
+    public void init() {
+        if (jwtSecret == null || jwtSecret.length() < 16) {
+            throw new IllegalStateException("APP_JWT_SECRET must be set and >= 16 chars");
+        }
+        key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
+    }
 
     public String generateToken(User user) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + jwtExpiration);
-
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("userId", user.getId());
-        claims.put("telegramId", user.getTelegramId());
-        claims.put("username", user.getUsername());
-
+        Date exp = new Date(now.getTime() + validityInMs);
         return Jwts.builder()
-                .setClaims(claims)
-                .setSubject(user.getId().toString())
+                .setSubject(String.valueOf(user.getId()))
+                .claim("username", user.getUsername())
+                .claim("telegramId", user.getTelegramId())
                 .setIssuedAt(now)
-                .setExpiration(expiryDate)
-                .signWith(SignatureAlgorithm.HS512, jwtSecret)
+                .setExpiration(exp)
+                .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
-    }
-
-    public Long getUserIdFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .setSigningKey(jwtSecret)
-                .parseClaimsJws(token)
-                .getBody();
-
-        return Long.parseLong(claims.getSubject());
-    }
-
-    public boolean validateToken(String token) {
-        try {
-            Jwts.parser().setSigningKey(jwtSecret).parseClaimsJws(token);
-            return true;
-        } catch (SignatureException | MalformedJwtException | ExpiredJwtException | UnsupportedJwtException | IllegalArgumentException ex) {
-            return false;
-        }
     }
 }

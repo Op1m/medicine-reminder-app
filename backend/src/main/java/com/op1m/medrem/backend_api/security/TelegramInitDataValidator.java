@@ -8,9 +8,10 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 public class TelegramInitDataValidator {
+
     private static final String HMAC_ALGO = "HmacSHA256";
 
-    public static Map<String,String> parseInitData(String initData) {
+    public static Map<String, String> parseInitData(String initData) {
         Map<String, String> map = new HashMap<>();
         if (initData == null || initData.isEmpty()) return map;
         String[] pairs = initData.split("&");
@@ -27,18 +28,20 @@ public class TelegramInitDataValidator {
 
     public static boolean validateInitData(String initData, String botToken) {
         try {
-            Map<String, String> data = parseInitData(initData);
-            if (!data.containsKey("hash")) return false;
-            String hash = data.get("hash");
-            data.remove("hash");
+            Map<String, String> map = parseInitData(initData);
+            if (!map.containsKey("hash")) return false;
+            String hash = map.get("hash");
+            map.remove("hash");
 
-            List<String> keys = new ArrayList<>(data.keySet());
+            List<String> keys = new ArrayList<>(map.keySet());
             Collections.sort(keys);
-            List<String> items = new ArrayList<>();
-            for (String k : keys) {
-                items.add(k + "=" + data.get(k));
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < keys.size(); i++) {
+                String k = keys.get(i);
+                sb.append(k).append("=").append(map.get(k));
+                if (i < keys.size() - 1) sb.append("\n");
             }
-            String dataCheckString = String.join("\n", items);
+            String dataCheckString = sb.toString();
 
             MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
             byte[] secretKey = sha256.digest(botToken.getBytes(StandardCharsets.UTF_8));
@@ -48,11 +51,9 @@ public class TelegramInitDataValidator {
             mac.init(keySpec);
             byte[] hmac = mac.doFinal(dataCheckString.getBytes(StandardCharsets.UTF_8));
 
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hmac) {
-                sb.append(String.format("%02x", b));
-            }
-            String computed = sb.toString();
+            StringBuilder hex = new StringBuilder();
+            for (byte b : hmac) hex.append(String.format("%02x", b));
+            String computed = hex.toString();
 
             return computed.equals(hash);
         } catch (Exception e) {
