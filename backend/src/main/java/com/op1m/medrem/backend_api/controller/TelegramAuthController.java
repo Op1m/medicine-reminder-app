@@ -33,6 +33,17 @@ public class TelegramAuthController {
 
     @PostMapping(path = {"/api/auth/telegram", "/auth/telegram"})
     public ResponseEntity<?> loginWithTelegram(@RequestBody InitDataRequest body) {
+        System.out.println("=== /api/auth/telegram called ===");
+        System.out.println("Raw body -> " + body);
+        if (body == null) {
+            System.out.println("Body == null");
+            return ResponseEntity.badRequest().body(Map.of("error","missing body"));
+        }
+        System.out.println("body.initData -> [" + body.initData + "]");
+        if (body.initData == null || body.initData.isBlank()) {
+            System.out.println("initData missing or blank");
+            return ResponseEntity.badRequest().body(Map.of("error","missing initData"));
+        }
         if (body == null || body.initData == null || body.initData.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "missing initData"));
         }

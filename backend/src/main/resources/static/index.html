@@ -1,89 +1,37 @@
-<!doctype html>
-<html lang="ru">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Medicine Reminder — Telegram Login</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f0f4fb}
-        .card{width:360px;background:#fff;padding:20px;border-radius:12px;box-shadow:0 8px 30px rgba(20,30,60,0.08);text-align:center}
-        .btn{padding:10px 16px;background:#2F9BFF;color:#fff;border-radius:8px;border:none;cursor:pointer}
-        .muted{color:#666;font-size:13px}
-    </style>
-</head>
-<body>
-<div class="card">
-    <h2>Medicine Reminder</h2>
-    <p class="muted">Войдите через Telegram</p>
-
-    <div id="info"></div>
-
-    <button id="loginBtn" class="btn">Войти через Telegram</button>
-    <p id="status" class="muted"></p>
-</div>
-
 <script>
-    const BACKEND = 'https://medicine-reminder-app-t3u9.onrender.com';
-    const tokenKey = 'medrem_token';
+    const BACKEND = 'https://medicine-reminder-app-t3u9.onrender.com'; // твой render URL
 
     function setStatus(t){ document.getElementById('status').innerText = t; }
 
     async function sendInitData(initData){
         setStatus('Авторизация...');
         try {
-            const r = await fetch(BACKEND + '/auth/telegram', {
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ initData })
+            const res = await fetch(BACKEND + '/api/auth/telegram', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ initData: initData })
             });
-            const json = await r.json();
-            if (!r.ok) {
-                setStatus('Auth failed: ' + (json.error || JSON.stringify(json)));
-                console.log('auth failed', json);
+            const json = await res.json().catch(()=>null);
+            if (!res.ok) {
+                setStatus('Auth failed: ' + (json?.error || res.status + ' ' + res.statusText));
+                console.log('Server response (non-ok):', res.status, json);
                 return;
             }
-            localStorage.setItem(tokenKey, json.token);
-            const user = json.user;
-            document.getElementById('info').innerHTML = '<strong>' + (user.username || user.firstName || 'User') + '</strong><div class="muted">' + (user.firstName || '') + ' ' + (user.lastName || '') + '</div>';
-            setStatus('Вход выполнен');
-        } catch(e) {
+            localStorage.setItem('token', json.token);
+            setStatus('Вход успешен: ' + (json.user?.username || json.user?.firstName));
+        } catch (e) {
             console.error(e);
             setStatus('Ошибка сети при auth');
         }
     }
 
-    document.getElementById('loginBtn').onclick = async () => {
-        if (window.Telegram && Telegram.WebApp) {
-            const initData = Telegram.WebApp.initData;
-            fetch(BACKEND + '/api/auth/telegram', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ initData })
-            });
-            if (!initData) {
-                setStatus('initData не найден — откройте приложение через кнопку бота в Telegram');
-                return;
-            }
-            await sendInitData(initData);
-        } else {
-            setStatus('Откройте страницу внутри Telegram (через Web App у бота)');
+    document.getElementById('loginBtn').addEventListener('click', async ()=> {
+        const initData = (window.Telegram && Telegram.WebApp) ? Telegram.WebApp.initData : undefined;
+        console.log('initData (from Telegram.WebApp):', initData);
+        if (!initData) {
+            setStatus('initData не найден. Откройте страницу через кнопку бота в Telegram (Web App).');
+            return;
         }
-    };
-
-    window.addEventListener('load', async () => {
-        if (window.Telegram && Telegram.WebApp) {
-            setStatus('Открыт в Telegram WebApp');
-            const initData = Telegram.WebApp.initData;
-            if (initData) {
-                await sendInitData(initData);
-            } else {
-                setStatus('initData отсутствует — нажмите Войти');
-            }
-        } else {
-            setStatus('Откройте через Telegram WebApp (только там работает авто-логин).');
-        }
+        await sendInitData(initData);
     });
 </script>
-</body>
-</html>
