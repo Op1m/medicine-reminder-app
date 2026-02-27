@@ -11,13 +11,23 @@ public class TelegramInitDataValidator {
 
     public static boolean validateInitData(String initData, String botToken) {
         try {
+            System.out.println("=== TelegramInitDataValidator ===");
+            System.out.println("initData: " + initData);
+            System.out.println("botToken starts with: " + (botToken != null && botToken.length() > 5 ? botToken.substring(0, 5) + "..." : "null"));
+            
             Map<String, String> rawParams = parseRawPairs(initData);
+            System.out.println("Raw params keys: " + rawParams.keySet());
 
-            if (!rawParams.containsKey("hash")) return false;
+            if (!rawParams.containsKey("hash")) {
+                System.out.println("❌ No 'hash' parameter found");
+                return false;
+            }
             String receivedHash = rawParams.remove("hash");
+            System.out.println("receivedHash: " + receivedHash);
 
             List<String> keys = new ArrayList<>(rawParams.keySet());
             Collections.sort(keys);
+            System.out.println("Sorted keys: " + keys);
 
             StringBuilder dataCheckString = new StringBuilder();
             for (int i = 0; i < keys.size(); i++) {
@@ -26,21 +36,22 @@ public class TelegramInitDataValidator {
                 dataCheckString.append(key).append("=").append(value);
                 if (i < keys.size() - 1) dataCheckString.append("\n");
             }
+            String checkString = dataCheckString.toString();
+            System.out.println("Data-check-string (raw): " + checkString);
 
             MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
             byte[] secretKey = sha256.digest(botToken.getBytes(StandardCharsets.UTF_8));
+            System.out.println("Secret key generated (hex): " + bytesToHex(secretKey).substring(0, 10) + "...");
 
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(secretKey, "HmacSHA256"));
+            byte[] hashBytes = mac.doFinal(checkString.getBytes(StandardCharsets.UTF_8));
+            String computedHash = bytesToHex(hashBytes);
+            System.out.println("Computed hash: " + computedHash);
+            System.out.println("Received hash:  " + receivedHash);
+            System.out.println("Hashes match: " + computedHash.equals(receivedHash));
 
-            byte[] hashBytes = mac.doFinal(dataCheckString.toString().getBytes(StandardCharsets.UTF_8));
-
-            StringBuilder hex = new StringBuilder();
-            for (byte b : hashBytes) {
-                hex.append(String.format("%02x", b));
-            }
-
-            return hex.toString().equals(receivedHash);
+            return computedHash.equals(receivedHash);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -87,6 +98,7 @@ public class TelegramInitDataValidator {
             String photoUrl = extractField(userJson, "photo_url");
             return new TelegramUserData(id, firstName, lastName, username, photoUrl);
         } catch (Exception e) {
+            e.printStackTrace();
             return null;
         }
     }
@@ -104,6 +116,14 @@ public class TelegramInitDataValidator {
             if (end == -1) end = json.indexOf('}', start);
             return json.substring(start, end).trim();
         }
+    }
+
+    private static String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
     }
 
     public static class TelegramUserData {
