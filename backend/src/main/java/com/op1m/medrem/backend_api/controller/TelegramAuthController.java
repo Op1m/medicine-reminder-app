@@ -37,22 +37,28 @@ public class TelegramAuthController {
 
     @PostMapping(path = {"/api/auth/telegram", "/auth/telegram"})
     public ResponseEntity<?> loginWithTelegram(@RequestBody InitDataRequest body) {
+        System.out.println("=== /api/auth/telegram called ===");
         if (body == null || body.initData == null || body.initData.isBlank()) {
+            System.out.println("raw body.initData: " + (body == null ? "null body" : "null initData"));
             return ResponseEntity.badRequest().body(Map.of("error", "missing initData"));
         }
+        System.out.println("raw body.initData: [" + body.initData + "]");
 
         if (botToken == null || botToken.isBlank()) {
+            System.out.println("Bot token is not configured!");
             return ResponseEntity.status(500).body(Map.of("error", "bot token not configured"));
         }
 
-        boolean ok = TelegramInitDataValidator.validateInitData(body.initData, botToken);
-        if (!ok) {
+        TelegramInitDataValidator.DebugResult dr = TelegramInitDataValidator.validateWithLogging(body.initData, botToken);
+        if (!dr.valid) {
+            System.out.println("❌ invalid initData: " + dr.message);
             return ResponseEntity.status(401).body(Map.of("error", "invalid initData"));
         }
 
         Map<String, String> decodedParams = TelegramInitDataValidator.parseDecodedParams(body.initData);
         TelegramInitDataValidator.TelegramUserData userData = TelegramInitDataValidator.extractUser(decodedParams);
         if (userData == null) {
+            System.out.println("❌ Cannot parse user data from decoded params");
             return ResponseEntity.badRequest().body(Map.of("error", "cannot parse user data"));
         }
 
@@ -89,6 +95,7 @@ public class TelegramAuthController {
                 "user", DTOMapper.toUserDTO(user)
         ));
     }
+
 
     @PostMapping("/telegram/debug")
     public ResponseEntity<?> debugLogin(@RequestBody TelegramUserDTO dto) {
