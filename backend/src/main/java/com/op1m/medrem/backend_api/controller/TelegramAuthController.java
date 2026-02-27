@@ -34,50 +34,29 @@ public class TelegramAuthController {
     @PostMapping(path = {"/api/auth/telegram", "/auth/telegram"})
     public ResponseEntity<?> loginWithTelegram(@RequestBody InitDataRequest body) {
         System.out.println("=== /api/auth/telegram called ===");
-        System.out.println("raw body.initData: [" + body.initData + "]");
-        if (body == null) {
-            System.out.println("Body == null");
-            return ResponseEntity.badRequest().body(Map.of("error","missing body"));
-        }
-        System.out.println("body.initData -> [" + body.initData + "]");
-        if (body.initData == null || body.initData.isBlank()) {
-            System.out.println("initData missing or blank");
-            return ResponseEntity.badRequest().body(Map.of("error","missing initData"));
-        }
         if (body == null || body.initData == null || body.initData.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "missing initData"));
         }
 
-        boolean ok = TelegramInitDataValidator.validateInitData(body.initData, botToken);
-        if (!ok) {
+        boolean isValid = TelegramInitDataValidator.validateInitData(body.initData, botToken);
+        if (!isValid) {
+            System.out.println("❌ Validation failed for initData: " + body.initData);
             return ResponseEntity.status(401).body(Map.of("error", "invalid initData"));
         }
 
-        var data = TelegramInitDataValidator.parseInitData(body.initData);
+        Map<String, String> decodedParams = TelegramInitDataValidator.parseDecodedParams(body.initData);
 
-        String idStr = data.getOrDefault("user[id]", data.getOrDefault("id", null));
-        if (idStr == null) {
-            String userJson = data.get("user");
-            if (userJson != null && userJson.contains("\"id\"")) {
-                int i = userJson.indexOf("\"id\"");
-                if (i >= 0) {
-                    String after = userJson.substring(i);
-                    String digits = after.replaceAll("\\D+", "");
-                    if (!digits.isBlank()) idStr = digits;
-                }
-            }
+        TelegramInitDataValidator.TelegramUserData userData = TelegramInitDataValidator.extractUser(decodedParams);
+        if (userData == null) {
+            System.out.println("❌ Cannot parse user data from decoded params");
+            return ResponseEntity.badRequest().body(Map.of("error", "cannot parse user data"));
         }
 
-        if (idStr == null) return ResponseEntity.status(400).body(Map.of("error", "user id not found"));
-
-        long tgId;
-        try { tgId = Long.parseLong(idStr.replaceAll("\\D+","")); }
-        catch (Exception e) { return ResponseEntity.status(400).body(Map.of("error","invalid user id")); }
-
-        String firstName = data.getOrDefault("user[first_name]", data.getOrDefault("first_name", ""));
-        String lastName  = data.getOrDefault("user[last_name]", data.getOrDefault("last_name", ""));
-        String username  = data.getOrDefault("user[username]", data.getOrDefault("username", ""));
-        String photoUrl  = data.getOrDefault("user[photo_url]", data.getOrDefault("photo_url", ""));
+        long tgId = userData.id;
+        String firstName = userData.firstName;
+        String lastName = userData.lastName;
+        String username = userData.username;
+        String photoUrl = userData.photoUrl;
 
         User user = userService.findByTelegramId(tgId);
         if (user == null) {
