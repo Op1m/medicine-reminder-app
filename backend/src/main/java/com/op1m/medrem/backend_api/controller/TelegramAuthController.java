@@ -37,14 +37,12 @@ public class TelegramAuthController {
         if (body == null || body.initData == null || body.initData.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "missing initData"));
         }
-
-        System.out.println("botToken starts with: " + (botToken != null && botToken.length() > 5 ? botToken.substring(0, 5) + "..." : "null"));
-
-        //boolean isValid = TelegramInitDataValidator.validateInitData(body.initData, botToken);
-        //if (!isValid) {
-        //    System.out.println("❌ Validation failed for initData: " + body.initData);
-        //    return ResponseEntity.status(401).body(Map.of("error", "invalid initData"));
-        //}
+        
+        // boolean isValid = TelegramInitDataValidator.validateInitData(body.initData, botToken);
+        // if (!isValid) {
+        //     System.out.println("❌ Validation failed for initData: " + body.initData);
+        //     return ResponseEntity.status(401).body(Map.of("error", "invalid initData"));
+        // }
 
         Map<String, String> decodedParams = TelegramInitDataValidator.parseDecodedParams(body.initData);
 
@@ -68,6 +66,7 @@ public class TelegramAuthController {
             user.setFirstName(firstName);
             user.setLastName(lastName);
             user.setPhotoUrl(photoUrl);
+            user.setEmail("telegram_" + tgId + "@placeholder.local");
             user = userService.save(user);
         } else {
             user.setFirstName(firstName);
@@ -95,6 +94,7 @@ public class TelegramAuthController {
             user.setFirstName(dto.getFirstName());
             user.setLastName(dto.getLastName());
             user.setPhotoUrl(dto.getPhotoUrl());
+            user.setEmail("telegram_" + dto.getId() + "@placeholder.local");
             user = userService.save(user);
         } else {
             user.setFirstName(dto.getFirstName());
