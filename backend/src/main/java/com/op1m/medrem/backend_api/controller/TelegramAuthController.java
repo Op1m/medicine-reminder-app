@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping({"/api/auth", "/"})
 public class TelegramAuthController {
 
     private final UserService userService;
@@ -31,7 +31,7 @@ public class TelegramAuthController {
         public String initData;
     }
 
-    @PostMapping("/telegram")
+    @PostMapping(path = {"/api/auth/telegram", "/auth/telegram"})
     public ResponseEntity<?> loginWithTelegram(@RequestBody InitDataRequest body) {
         if (body == null || body.initData == null || body.initData.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "missing initData"));
