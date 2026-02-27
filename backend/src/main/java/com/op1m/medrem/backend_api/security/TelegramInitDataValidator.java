@@ -23,11 +23,12 @@ public class TelegramInitDataValidator {
                 return false;
             }
             String receivedHash = rawParams.remove("hash");
-            System.out.println("receivedHash: " + receivedHash);
+
+            rawParams.remove("signature");
 
             List<String> keys = new ArrayList<>(rawParams.keySet());
             Collections.sort(keys);
-            System.out.println("Sorted keys: " + keys);
+            System.out.println("Sorted keys (without signature): " + keys);
 
             StringBuilder dataCheckString = new StringBuilder();
             for (int i = 0; i < keys.size(); i++) {
