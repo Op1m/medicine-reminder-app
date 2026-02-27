@@ -12,7 +12,7 @@ public class TelegramInitDataValidator {
 
     public static Map<String, String> parseInitData(String initData) {
         Map<String, String> map = new HashMap<>();
-        if (initData == null || initData.isEmpty()) return map;
+        if (initData == null) return map;
         String[] pairs = initData.split("&");
         for (String p : pairs) {
             int idx = p.indexOf('=');

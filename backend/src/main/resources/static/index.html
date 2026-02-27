@@ -56,6 +56,11 @@
     document.getElementById('loginBtn').onclick = async () => {
         if (window.Telegram && Telegram.WebApp) {
             const initData = Telegram.WebApp.initData;
+            fetch(BACKEND + '/api/auth/telegram', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ initData })
+            });
             if (!initData) {
                 setStatus('initData не найден — откройте приложение через кнопку бота в Telegram');
                 return;
