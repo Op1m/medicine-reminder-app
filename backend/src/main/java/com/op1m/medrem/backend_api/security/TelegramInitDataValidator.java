@@ -15,7 +15,7 @@ public class TelegramInitDataValidator {
 
             if (!params.containsKey("hash")) return false;
 
-            String hash = params.remove("hash");
+            String receivedHash = params.remove("hash");
 
             List<String> keys = new ArrayList<>(params.keySet());
             Collections.sort(keys);
@@ -28,9 +28,7 @@ public class TelegramInitDataValidator {
                         .append("=")
                         .append(params.get(key));
 
-                if (i < keys.size() - 1) {
-                    dataCheckString.append("\n");
-                }
+                if (i < keys.size() - 1) dataCheckString.append("\n");
             }
 
             MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
@@ -42,16 +40,17 @@ public class TelegramInitDataValidator {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(secretKey, "HmacSHA256"));
 
-            byte[] computedHashBytes = mac.doFinal(
+            byte[] hashBytes = mac.doFinal(
                     dataCheckString.toString().getBytes(StandardCharsets.UTF_8)
             );
 
             StringBuilder hex = new StringBuilder();
-            for (byte b : computedHashBytes) {
+
+            for (byte b : hashBytes) {
                 hex.append(String.format("%02x", b));
             }
 
-            return hex.toString().equals(hash);
+            return hex.toString().equals(receivedHash);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -62,14 +61,14 @@ public class TelegramInitDataValidator {
     public static Map<String, String> parseInitData(String initData) {
         Map<String, String> map = new HashMap<>();
 
-        String[] pairs = initData.split("&");
-
-        for (String pair : pairs) {
+        for (String pair : initData.split("&")) {
             int idx = pair.indexOf('=');
+
             if (idx > 0) {
-                String key = URLDecoder.decode(pair.substring(0, idx), StandardCharsets.UTF_8);
-                String value = URLDecoder.decode(pair.substring(idx + 1), StandardCharsets.UTF_8);
-                map.put(key, value);
+                map.put(
+                        URLDecoder.decode(pair.substring(0, idx), StandardCharsets.UTF_8),
+                        URLDecoder.decode(pair.substring(idx + 1), StandardCharsets.UTF_8)
+                );
             }
         }
 
