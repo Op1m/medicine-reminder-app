@@ -60,7 +60,7 @@ public class TelegramInitDataValidator {
         }
     }
 
-    private static Map<String, String> parseInitData(String initData) {
+    public static Map<String, String> parseInitData(String initData) {
         Map<String, String> map = new HashMap<>();
 
         String[] pairs = initData.split("&");
