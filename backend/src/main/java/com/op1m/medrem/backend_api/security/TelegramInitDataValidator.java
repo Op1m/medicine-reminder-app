@@ -26,6 +26,7 @@ public class TelegramInitDataValidator {
     }
 
     public static boolean validateInitData(String initData, String botToken) {
+
         try {
             Map<String, String> map = parseInitData(initData);
             if (!map.containsKey("hash")) return false;
@@ -34,6 +35,7 @@ public class TelegramInitDataValidator {
             List<String> keys = new ArrayList<>(map.keySet());
             Collections.sort(keys);
             StringBuilder sb = new StringBuilder();
+
             for (int i = 0; i < keys.size(); i++) {
                 String k = keys.get(i);
                 sb.append(k).append("=").append(map.get(k));
@@ -52,6 +54,9 @@ public class TelegramInitDataValidator {
             StringBuilder hex = new StringBuilder();
             for (byte b : hmac) hex.append(String.format("%02x", b));
             String computed = hex.toString();
+            System.out.println("dataCheckString: [" + dataCheckString + "]");
+            System.out.println("receivedHash: " + receivedHash);
+            System.out.println("computedHash: " + computed);
 
             return computed.equals(receivedHash);
         } catch (Exception e) {
