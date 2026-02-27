@@ -134,7 +134,7 @@
             `${BACKEND}/api/auth/telegram`,
             `${BACKEND}/auth/telegram`
         ];
-        let lastNetworkErr = null;
+        let lastErr = null;
         for (const url of endpoints) {
             try {
                 const res = await fetch(url, {
@@ -142,10 +142,10 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                let text = null;
-                try { text = await res.text(); } catch (e) { text = null; }
+
+                const text = await res.text().catch(() => null);
                 let parsed = null;
-                try { parsed = text ? JSON.parse(text) : null; } catch(e){ parsed = text; }
+                try { parsed = text ? JSON.parse(text) : null; } catch(e) { parsed = text; }
 
                 console.debug('POST', url, 'status', res.status, 'body', parsed);
 
@@ -160,12 +160,12 @@
                     return { ok: false, status: res.status, data: parsed, url };
                 }
             } catch (err) {
-                lastNetworkErr = err;
+                lastErr = err;
                 console.warn('Network error when posting to', url, err);
                 continue;
             }
         }
-        throw lastNetworkErr || new Error('No backend endpoints reachable');
+        throw lastErr || new Error('No backend endpoints reachable');
     }
 
     async function doAuthWithInitDataString(initDataString) {
@@ -174,18 +174,24 @@
         try {
             const result = await postInitDataString(initDataString);
             if (!result.ok) {
-                const errMsg = (result.data && (result.data.error || result.data.message)) || `HTTP ${result.status} at ${result.url}`;
-                throw new Error(errMsg);
+                console.warn('Auth failed', result);
+                const debugInfo = result.data ? JSON.stringify(result.data, null, 2) : `HTTP ${result.status}`;
+                alert('Не удалось войти: ' + debugInfo);
+                throw new Error(debugInfo);
             }
             const body = result.data || {};
             const user = body.user || body;
             const token = body.token || body.accessToken || null;
-            if (!user || (!user.id && !user.username)) throw new Error('Invalid user data from server');
+            if (!user || (!user.id && !user.username)) {
+                const debugInfo = JSON.stringify(body, null, 2);
+                alert('Invalid user data from server: ' + debugInfo);
+                throw new Error('Invalid user data from server');
+            }
             saveTokenAndUser(token, user);
             showAuth(user);
             return { user, token };
         } catch (err) {
-            console.error('auth error', err);
+            console.error('doAuthWithInitDataString error', err);
             clearLocal();
             showUnauth();
             throw err;
