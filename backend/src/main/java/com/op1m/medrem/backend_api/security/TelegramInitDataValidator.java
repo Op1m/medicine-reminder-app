@@ -33,22 +33,21 @@ public class TelegramInitDataValidator {
                 }
             }
 
-            Mac mac = Mac.getInstance("HmacSHA256");
+            MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
 
-            SecretKeySpec secretKey = new SecretKeySpec(
-                    mac.doFinal(botToken.getBytes(StandardCharsets.UTF_8)),
-                    "HmacSHA256"
+            byte[] secretKey = sha256.digest(
+                    botToken.getBytes(StandardCharsets.UTF_8)
             );
 
-            Mac mac2 = Mac.getInstance("HmacSHA256");
-            mac2.init(secretKey);
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(secretKey, "HmacSHA256"));
 
-            byte[] computedHash = mac2.doFinal(
+            byte[] computedHashBytes = mac.doFinal(
                     dataCheckString.toString().getBytes(StandardCharsets.UTF_8)
             );
 
             StringBuilder hex = new StringBuilder();
-            for (byte b : computedHash) {
+            for (byte b : computedHashBytes) {
                 hex.append(String.format("%02x", b));
             }
 
