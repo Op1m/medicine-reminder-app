@@ -8,7 +8,6 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 public class TelegramInitDataValidator {
-
     private static final String HMAC_ALGO = "HmacSHA256";
 
     public static Map<String, String> parseInitData(String initData) {
@@ -30,8 +29,7 @@ public class TelegramInitDataValidator {
         try {
             Map<String, String> map = parseInitData(initData);
             if (!map.containsKey("hash")) return false;
-            String hash = map.get("hash");
-            map.remove("hash");
+            String receivedHash = map.remove("hash");
 
             List<String> keys = new ArrayList<>(map.keySet());
             Collections.sort(keys);
@@ -55,7 +53,7 @@ public class TelegramInitDataValidator {
             for (byte b : hmac) hex.append(String.format("%02x", b));
             String computed = hex.toString();
 
-            return computed.equals(hash);
+            return computed.equals(receivedHash);
         } catch (Exception e) {
             e.printStackTrace();
             return false;

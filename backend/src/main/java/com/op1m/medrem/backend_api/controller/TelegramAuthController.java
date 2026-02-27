@@ -17,7 +17,7 @@ public class TelegramAuthController {
     private final UserService userService;
     private final JwtTokenProvider jwtTokenProvider;
 
-    @Value("${app.telegram.bot-token}")
+    @Value("${TELEGRAM_BOT_TOKEN:${app.telegram.bot-token:}}")
     private String botToken;
 
     public TelegramAuthController(UserService userService, JwtTokenProvider jwtTokenProvider) {
@@ -30,38 +30,34 @@ public class TelegramAuthController {
     @PostMapping("/telegram")
     public ResponseEntity<?> loginWithTelegram(@RequestBody InitDataRequest body) {
         if (body == null || body.initData == null || body.initData.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "missing initData"));
+            return ResponseEntity.badRequest().body(Map.of("error","missing initData"));
         }
 
         boolean valid = TelegramInitDataValidator.validateInitData(body.initData, botToken);
         if (!valid) {
-            return ResponseEntity.status(401).body(Map.of("error", "invalid initData"));
+            return ResponseEntity.status(401).body(Map.of("error","invalid initData"));
         }
 
         var data = TelegramInitDataValidator.parseInitData(body.initData);
 
+        // try different key shapes: user[id] or id
         String idStr = data.getOrDefault("user[id]", data.getOrDefault("id", null));
-        if (idStr == null) {
-            return ResponseEntity.status(400).body(Map.of("error", "user id not found in initData"));
-        }
+        if (idStr == null) return ResponseEntity.status(400).body(Map.of("error","user id not found"));
 
         long tgId;
-        try {
-            tgId = Long.parseLong(idStr.replaceAll("[^0-9]", ""));
-        } catch (Exception e) {
-            return ResponseEntity.status(400).body(Map.of("error", "invalid user id"));
-        }
+        try { tgId = Long.parseLong(idStr.replaceAll("[^0-9]","")); }
+        catch (Exception e) { return ResponseEntity.status(400).body(Map.of("error","invalid user id")); }
 
         String firstName = data.getOrDefault("user[first_name]", data.getOrDefault("first_name", ""));
-        String lastName = data.getOrDefault("user[last_name]", data.getOrDefault("last_name", ""));
-        String username = data.getOrDefault("user[username]", data.getOrDefault("username", ""));
-        String photoUrl = data.getOrDefault("user[photo_url]", data.getOrDefault("photo_url", ""));
+        String lastName  = data.getOrDefault("user[last_name]", data.getOrDefault("last_name", ""));
+        String username  = data.getOrDefault("user[username]", data.getOrDefault("username", ""));
+        String photoUrl  = data.getOrDefault("user[photo_url]", data.getOrDefault("photo_url", ""));
 
         User user = userService.findByTelegramId(tgId);
         if (user == null) {
             user = new User();
             user.setTelegramId(tgId);
-            user.setUsername(username != null && !username.isBlank() ? username : "tg_" + tgId);
+            user.setUsername((username != null && !username.isBlank()) ? username : "tg_" + tgId);
             user.setFirstName(firstName);
             user.setLastName(lastName);
             user.setPhotoUrl(photoUrl);
@@ -76,13 +72,16 @@ public class TelegramAuthController {
 
         String token = jwtTokenProvider.generateToken(user);
 
-        return ResponseEntity.ok(Map.of("token", token, "user", Map.of(
-                "id", user.getId(),
-                "telegramId", user.getTelegramId(),
-                "username", user.getUsername(),
-                "firstName", user.getFirstName(),
-                "lastName", user.getLastName(),
-                "photoUrl", user.getPhotoUrl()
-        )));
+        return ResponseEntity.ok(Map.of(
+                "token", token,
+                "user", Map.of(
+                        "id", user.getId(),
+                        "telegramId", user.getTelegramId(),
+                        "username", user.getUsername(),
+                        "firstName", user.getFirstName(),
+                        "lastName", user.getLastName(),
+                        "photoUrl", user.getPhotoUrl()
+                )
+        ));
     }
 }
