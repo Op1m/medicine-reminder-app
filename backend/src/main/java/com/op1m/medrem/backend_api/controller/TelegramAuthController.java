@@ -14,7 +14,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/auth/telegram")
+@RequestMapping({"/auth/telegram", "/api/auth/telegram"})
 public class TelegramAuthController {
 
     private static final Logger log = LoggerFactory.getLogger(TelegramAuthController.class);
@@ -42,16 +42,15 @@ public class TelegramAuthController {
                     .body(Map.of("ok", false, "error", "server missing TELEGRAM_BOT_TOKEN"));
         }
 
-        log.debug("Incoming telegram auth data (keys and truncated values): {}", shortenedMap(data, 120));
+        log.debug("Incoming telegram auth data (keys and truncated values): {}", shortenedMap(data, 200));
 
         DebugInfo dbg = TelegramInitDataValidator.validateWithDebug(data, botToken);
 
         if (!dbg.ok) {
             log.debug("Telegram init data validation failed. receivedKeys={}, note={}", dbg.receivedKeys, dbg.note);
             log.debug("Validation debug summary: providedHash='{}', calcHex='{}', secretKeySha256='{}'",
-                    truncate(dbg.providedHash, 80), truncate(dbg.calcHex, 80), truncate(dbg.secretKeyHex, 80));
+                    truncate(dbg.providedHash, 100), truncate(dbg.calcHex, 100), truncate(dbg.secretKeyHex, 100));
             log.debug("data_check_string (first 2000 chars):\n{}", truncate(dbg.dataCheckString, 2000));
-            log.debug("parts (first 30): {}", dbg.parts == null ? "null" : dbg.parts.size() > 30 ? dbg.parts.subList(0,30) : dbg.parts);
             if (dbg.error != null) log.debug("validation error reason: {}", dbg.error);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("ok", false, "error", "invalid init data"));
@@ -60,7 +59,11 @@ public class TelegramAuthController {
         Map<String, String> user = extractUser(data);
         log.info("Telegram login OK for id={} username={}", user.get("id"), user.get("username"));
 
-        return ResponseEntity.ok(Map.of("ok", true, "user", user));
+        Map<String, Object> result = new HashMap<>();
+        result.put("ok", true);
+        result.put("user", user);
+
+        return ResponseEntity.ok(result);
     }
 
     private Map<String, String> extractUser(Map<String, String> d) {

@@ -134,7 +134,7 @@
             `${BACKEND}/api/auth/telegram`,
             `${BACKEND}/auth/telegram`
         ];
-        let lastErr = null;
+        let lastNetworkErr = null;
         for (const url of endpoints) {
             try {
                 const res = await fetch(url, {
@@ -142,14 +142,30 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                const data = await res.json().catch(() => null);
-                if (res.ok) return { ok: true, data, url };
-                return { ok: false, status: res.status, data, url };
+                let text = null;
+                try { text = await res.text(); } catch (e) { text = null; }
+                let parsed = null;
+                try { parsed = text ? JSON.parse(text) : null; } catch(e){ parsed = text; }
+
+                console.debug('POST', url, 'status', res.status, 'body', parsed);
+
+                if (res.status === 404) {
+                    console.warn('Endpoint not found, trying next', url);
+                    continue;
+                }
+
+                if (res.ok) {
+                    return { ok: true, data: parsed, url };
+                } else {
+                    return { ok: false, status: res.status, data: parsed, url };
+                }
             } catch (err) {
-                lastErr = err;
+                lastNetworkErr = err;
+                console.warn('Network error when posting to', url, err);
+                continue;
             }
         }
-        throw lastErr || new Error('No backend endpoints reachable');
+        throw lastNetworkErr || new Error('No backend endpoints reachable');
     }
 
     async function doAuthWithInitDataString(initDataString) {
