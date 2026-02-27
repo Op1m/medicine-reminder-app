@@ -8,9 +8,11 @@ import com.op1m.medrem.backend_api.security.TelegramInitDataValidator;
 import com.op1m.medrem.backend_api.service.UserService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping({"/api/auth", "/"})
@@ -18,13 +20,15 @@ public class TelegramAuthController {
 
     private final UserService userService;
     private final JwtTokenProvider tokenProvider;
+    private final PasswordEncoder passwordEncoder;
 
     @Value("${TELEGRAM_BOT_TOKEN:${app.telegram.bot-token:}}")
     private String botToken;
 
-    public TelegramAuthController(UserService userService, JwtTokenProvider tokenProvider) {
+    public TelegramAuthController(UserService userService, JwtTokenProvider tokenProvider, PasswordEncoder passwordEncoder) {
         this.userService = userService;
         this.tokenProvider = tokenProvider;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public static class InitDataRequest {
@@ -37,12 +41,6 @@ public class TelegramAuthController {
         if (body == null || body.initData == null || body.initData.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "missing initData"));
         }
-
-        // boolean isValid = TelegramInitDataValidator.validateInitData(body.initData, botToken);
-        // if (!isValid) {
-        //     System.out.println("❌ Validation failed for initData: " + body.initData);
-        //     return ResponseEntity.status(401).body(Map.of("error", "invalid initData"));
-        // }
 
         Map<String, String> decodedParams = TelegramInitDataValidator.parseDecodedParams(body.initData);
 
@@ -67,6 +65,8 @@ public class TelegramAuthController {
             user.setLastName(lastName);
             user.setPhotoUrl(photoUrl);
             user.setEmail("telegram_" + tgId + "@placeholder.local");
+            String randomPassword = UUID.randomUUID().toString();
+            user.setPassword(passwordEncoder.encode(randomPassword));
             user = userService.save(user);
         } else {
             user.setFirstName(firstName);
@@ -95,6 +95,8 @@ public class TelegramAuthController {
             user.setLastName(dto.getLastName());
             user.setPhotoUrl(dto.getPhotoUrl());
             user.setEmail("telegram_" + dto.getId() + "@placeholder.local");
+            String randomPassword = UUID.randomUUID().toString();
+            user.setPassword(passwordEncoder.encode(randomPassword));
             user = userService.save(user);
         } else {
             user.setFirstName(dto.getFirstName());
