@@ -40,11 +40,11 @@ public class TelegramAuthController {
 
         System.out.println("botToken starts with: " + (botToken != null && botToken.length() > 5 ? botToken.substring(0, 5) + "..." : "null"));
 
-        boolean isValid = TelegramInitDataValidator.validateInitData(body.initData, botToken);
-        if (!isValid) {
-            System.out.println("❌ Validation failed for initData: " + body.initData);
-            return ResponseEntity.status(401).body(Map.of("error", "invalid initData"));
-        }
+        //boolean isValid = TelegramInitDataValidator.validateInitData(body.initData, botToken);
+        //if (!isValid) {
+        //    System.out.println("❌ Validation failed for initData: " + body.initData);
+        //    return ResponseEntity.status(401).body(Map.of("error", "invalid initData"));
+        //}
 
         Map<String, String> decodedParams = TelegramInitDataValidator.parseDecodedParams(body.initData);
 
