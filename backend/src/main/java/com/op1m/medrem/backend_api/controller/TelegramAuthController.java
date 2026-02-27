@@ -38,6 +38,8 @@ public class TelegramAuthController {
             return ResponseEntity.badRequest().body(Map.of("error", "missing initData"));
         }
 
+        System.out.println("botToken starts with: " + (botToken != null && botToken.length() > 5 ? botToken.substring(0, 5) + "..." : "null"));
+
         boolean isValid = TelegramInitDataValidator.validateInitData(body.initData, botToken);
         if (!isValid) {
             System.out.println("❌ Validation failed for initData: " + body.initData);

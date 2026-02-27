@@ -14,7 +14,7 @@ public class TelegramInitDataValidator {
             System.out.println("=== TelegramInitDataValidator ===");
             System.out.println("initData: " + initData);
             System.out.println("botToken starts with: " + (botToken != null && botToken.length() > 5 ? botToken.substring(0, 5) + "..." : "null"));
-            
+
             Map<String, String> rawParams = parseRawPairs(initData);
             System.out.println("Raw params keys: " + rawParams.keySet());
 
