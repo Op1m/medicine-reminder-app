@@ -53,7 +53,7 @@ public final class TelegramInitDataValidator {
             System.out.println("data_check_string: ");
             System.out.println(dataCheckString);
 
-            byte[] secret = hmacSha256(botToken.getBytes(StandardCharsets.UTF_8), WEBAPP_DATA_STRING.getBytes(StandardCharsets.UTF_8));
+            byte[] secret = hmacSha256(WEBAPP_DATA_STRING.getBytes(StandardCharsets.UTF_8), botToken.getBytes(StandardCharsets.UTF_8));
             System.out.println("secret key (hex preview): " + previewHex(secret) + " length=" + secret.length);
 
             byte[] signature = hmacSha256(secret, dataCheckString.getBytes(StandardCharsets.UTF_8));
@@ -78,7 +78,12 @@ public final class TelegramInitDataValidator {
                 sbRaw.append(k).append("=").append(v == null ? "" : v);
                 if (i < rawKeys.size() - 1) sbRaw.append("\n");
             }
-            String dataCheckStringRaw = sbRaw.toString();
+            String dataCheckStringRaw = initData
+                    .replace("&hash=" + receivedHash, "")
+                    .replace("&signature=" + rawParams.get("signature"), "");
+
+            System.out.println("RAW STRING USED:");
+            System.out.println(dataCheckStringRaw);
             byte[] signatureRaw = hmacSha256(secret, dataCheckStringRaw.getBytes(StandardCharsets.UTF_8));
             String computedHexRaw = bytesToHex(signatureRaw);
             System.out.println("computedHash (hex, using raw/urlencoded-values): " + computedHexRaw);
