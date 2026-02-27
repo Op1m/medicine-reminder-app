@@ -6,9 +6,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -27,10 +26,9 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/api/public/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .anyRequest().authenticated()
-                )
-                .oauth2ResourceServer(oauth -> {});
+                        .requestMatchers("/auth/**", "/api/public/**", "/static/**", "/favicon.ico").permitAll()
+                        .anyRequest().permitAll()
+                );
 
         return http.build();
     }
@@ -39,7 +37,8 @@ public class SecurityConfig {
     public UserDetailsService userDetailsService(UserService userService) {
         return username -> {
 
-            com.op1m.medrem.backend_api.entity.User user = userService.findByUsername(username);
+            com.op1m.medrem.backend_api.entity.User user =
+                    userService.findByUsername(username);
 
             if (user == null) {
                 throw new UsernameNotFoundException("User not found: " + username);
