@@ -9,84 +9,71 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class TelegramInitDataValidator {
 
-    private static final String HMAC_ALGO = "HmacSHA256";
-
-    public static Map<String, String> parseInitData(String initData) {
-        Map<String, String> map = new HashMap<>();
-        if (initData == null || initData.isBlank()) return map;
-
-        String[] pairs = initData.split("&");
-
-        for (String p : pairs) {
-            int idx = p.indexOf('=');
-            if (idx > 0) {
-                String k = URLDecoder.decode(p.substring(0, idx), StandardCharsets.UTF_8);
-                String v = URLDecoder.decode(p.substring(idx + 1), StandardCharsets.UTF_8);
-                map.put(k, v);
-            }
-        }
-        return map;
-    }
-
     public static boolean validateInitData(String initData, String botToken) {
-
         try {
-            Map<String, String> map = parseInitData(initData);
+            Map<String, String> params = parseInitData(initData);
 
-            if (!map.containsKey("hash")) {
-                System.out.println("No hash in initData");
-                return false;
-            }
+            if (!params.containsKey("hash")) return false;
 
-            String receivedHash = map.remove("hash");
+            String hash = params.remove("hash");
 
-            map.remove("signature");
-
-            List<String> keys = new ArrayList<>(map.keySet());
+            List<String> keys = new ArrayList<>(params.keySet());
             Collections.sort(keys);
 
-            StringBuilder sb = new StringBuilder();
+            StringBuilder dataCheckString = new StringBuilder();
 
             for (int i = 0; i < keys.size(); i++) {
-                String k = keys.get(i);
-                sb.append(k).append("=").append(map.get(k));
-                if (i < keys.size() - 1) sb.append("\n");
+                String key = keys.get(i);
+                dataCheckString.append(key)
+                        .append("=")
+                        .append(params.get(key));
+
+                if (i < keys.size() - 1) {
+                    dataCheckString.append("\n");
+                }
             }
 
-            String dataCheckString = sb.toString();
-
             Mac mac = Mac.getInstance("HmacSHA256");
-            SecretKeySpec keySpec = new SecretKeySpec(
-                    "WebAppData".getBytes(StandardCharsets.UTF_8),
+
+            SecretKeySpec secretKey = new SecretKeySpec(
+                    mac.doFinal(botToken.getBytes(StandardCharsets.UTF_8)),
                     "HmacSHA256"
             );
-            mac.init(keySpec);
-            byte[] secretKey = mac.doFinal(botToken.getBytes(StandardCharsets.UTF_8));
 
             Mac mac2 = Mac.getInstance("HmacSHA256");
-            SecretKeySpec keySpec2 = new SecretKeySpec(secretKey, "HmacSHA256");
-            mac2.init(keySpec2);
+            mac2.init(secretKey);
 
-            byte[] hmac = mac2.doFinal(dataCheckString.getBytes(StandardCharsets.UTF_8));
+            byte[] computedHash = mac2.doFinal(
+                    dataCheckString.toString().getBytes(StandardCharsets.UTF_8)
+            );
 
             StringBuilder hex = new StringBuilder();
-            for (byte b : hmac) {
+            for (byte b : computedHash) {
                 hex.append(String.format("%02x", b));
             }
 
-            String computedHash = hex.toString();
-
-            System.out.println("----- TELEGRAM VALIDATION -----");
-            System.out.println("dataCheckString:\n" + dataCheckString);
-            System.out.println("receivedHash:  " + receivedHash);
-            System.out.println("computedHash:  " + computedHash);
-            System.out.println("--------------------------------");
-
-            return computedHash.equals(receivedHash);
+            return hex.toString().equals(hash);
 
         } catch (Exception e) {
             e.printStackTrace();
             return false;
         }
+    }
+
+    private static Map<String, String> parseInitData(String initData) {
+        Map<String, String> map = new HashMap<>();
+
+        String[] pairs = initData.split("&");
+
+        for (String pair : pairs) {
+            int idx = pair.indexOf('=');
+            if (idx > 0) {
+                String key = URLDecoder.decode(pair.substring(0, idx), StandardCharsets.UTF_8);
+                String value = URLDecoder.decode(pair.substring(idx + 1), StandardCharsets.UTF_8);
+                map.put(key, value);
+            }
+        }
+
+        return map;
     }
 }
