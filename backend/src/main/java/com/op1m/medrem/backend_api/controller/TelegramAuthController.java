@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
@@ -35,19 +36,38 @@ public class TelegramAuthController {
         public String initData;
     }
 
-    @PostMapping(path = {"/api/auth/telegram", "/auth/telegram"})
+    @PostMapping(path = {"/telegram", "/auth/telegram", "/api/auth/telegram"})
     public ResponseEntity<?> loginWithTelegram(@RequestBody InitDataRequest body) {
         System.out.println("=== /api/auth/telegram called ===");
+
         if (body == null || body.initData == null || body.initData.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "missing initData"));
         }
 
-        Map<String, String> decodedParams = TelegramInitDataValidator.parseDecodedParams(body.initData);
+        boolean ok = TelegramInitDataValidator.validateInitData(body.initData, botToken);
+        if (!ok) {
+            System.out.println("❌ invalid initData");
+            return ResponseEntity.status(401).body(Map.of("error", "invalid initData"));
+        }
 
-        TelegramInitDataValidator.TelegramUserData userData = TelegramInitDataValidator.extractUser(decodedParams);
+        var decoded = TelegramInitDataValidator.parseDecodedParams(body.initData);
+        var userData = TelegramInitDataValidator.extractUser(decoded);
         if (userData == null) {
-            System.out.println("❌ Cannot parse user data from decoded params");
+            System.out.println("❌ cannot parse user data");
             return ResponseEntity.badRequest().body(Map.of("error", "cannot parse user data"));
+        }
+
+        try {
+            String ad = decoded.get("auth_date");
+            if (ad == null) return ResponseEntity.status(401).body(Map.of("error", "missing auth_date"));
+            long authDate = Long.parseLong(ad);
+            long now = Instant.now().getEpochSecond();
+            if (Math.abs(now - authDate) > 300L) {
+                return ResponseEntity.status(401).body(Map.of("error", "initData expired"));
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return ResponseEntity.status(401).body(Map.of("error", "invalid auth_date"));
         }
 
         long tgId = userData.id;
@@ -67,21 +87,36 @@ public class TelegramAuthController {
             user.setEmail("telegram_" + tgId + "@placeholder.local");
             String randomPassword = UUID.randomUUID().toString();
             user.setPassword(passwordEncoder.encode(randomPassword));
+
+            try {
+                user.setActive(true);
+            } catch (NoSuchMethodError | AbstractMethodError ignore) {
+            }
+
             user = userService.save(user);
         } else {
-            user.setFirstName(firstName);
-            user.setLastName(lastName);
-            if (username != null && !username.isBlank()) user.setUsername(username);
-            user.setPhotoUrl(photoUrl);
-            user = userService.update(user);
+            boolean changed = false;
+            if (firstName != null && !firstName.isBlank() && !firstName.equals(user.getFirstName())) {
+                user.setFirstName(firstName);
+                changed = true;
+            }
+            if (lastName != null && !lastName.isBlank() && !lastName.equals(user.getLastName())) {
+                user.setLastName(lastName);
+                changed = true;
+            }
+            if (username != null && !username.isBlank() && !username.equals(user.getUsername())) {
+                user.setUsername(username);
+                changed = true;
+            }
+            if (photoUrl != null && !photoUrl.isBlank() && !photoUrl.equals(user.getPhotoUrl())) {
+                user.setPhotoUrl(photoUrl);
+                changed = true;
+            }
+            if (changed) user = userService.update(user);
         }
 
         String token = tokenProvider.generateToken(user);
-
-        return ResponseEntity.ok(Map.of(
-                "token", token,
-                "user", DTOMapper.toUserDTO(user)
-        ));
+        return ResponseEntity.ok(Map.of("token", token, "user", DTOMapper.toUserDTO(user)));
     }
 
     @PostMapping("/telegram/debug")
@@ -97,6 +132,9 @@ public class TelegramAuthController {
             user.setEmail("telegram_" + dto.getId() + "@placeholder.local");
             String randomPassword = UUID.randomUUID().toString();
             user.setPassword(passwordEncoder.encode(randomPassword));
+            try {
+                user.setActive(true);
+            } catch (Throwable ignored) {}
             user = userService.save(user);
         } else {
             user.setFirstName(dto.getFirstName());

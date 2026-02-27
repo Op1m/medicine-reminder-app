@@ -1,5 +1,8 @@
 package com.op1m.medrem.backend_api.security;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.net.URLDecoder;
@@ -9,122 +12,81 @@ import java.util.*;
 
 public class TelegramInitDataValidator {
 
+    private static final String HMAC_ALGO = "HmacSHA256";
+    private static final ObjectMapper mapper = new ObjectMapper();
+
     public static boolean validateInitData(String initData, String botToken) {
         try {
-            System.out.println("=== TelegramInitDataValidator ===");
-            System.out.println("initData: " + initData);
-            System.out.println("botToken starts with: " + (botToken != null && botToken.length() > 5 ? botToken.substring(0, 5) + "..." : "null"));
+            if (initData == null || botToken == null || botToken.isBlank()) return false;
 
-            Map<String, String> rawParams = parseRawPairs(initData);
-            System.out.println("Raw params keys: " + rawParams.keySet());
+            Map<String, String> params = parseDecodedParams(initData);
+            if (!params.containsKey("hash")) return false;
 
-            if (!rawParams.containsKey("hash")) {
-                System.out.println("❌ No 'hash' parameter found");
-                return false;
-            }
-            String receivedHash = rawParams.remove("hash");
+            String receivedHash = params.remove("hash");
 
-            rawParams.remove("signature");
+            params.remove("signature");
 
-            List<String> keys = new ArrayList<>(rawParams.keySet());
+            List<String> keys = new ArrayList<>(params.keySet());
             Collections.sort(keys);
-            System.out.println("Sorted keys (without signature): " + keys);
 
-            StringBuilder dataCheckString = new StringBuilder();
+            StringBuilder sb = new StringBuilder();
             for (int i = 0; i < keys.size(); i++) {
-                String key = keys.get(i);
-                String value = rawParams.get(key);
-                dataCheckString.append(key).append("=").append(value);
-                if (i < keys.size() - 1) dataCheckString.append("\n");
+                String k = keys.get(i);
+                sb.append(k).append("=").append(params.get(k));
+                if (i < keys.size() - 1) sb.append("\n");
             }
-            String checkString = dataCheckString.toString();
-            System.out.println("Data-check-string (raw): " + checkString);
+            String dataCheckString = sb.toString();
 
             MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
             byte[] secretKey = sha256.digest(botToken.getBytes(StandardCharsets.UTF_8));
-            System.out.println("Secret key generated (hex): " + bytesToHex(secretKey).substring(0, 10) + "...");
 
-            Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(secretKey, "HmacSHA256"));
-            byte[] hashBytes = mac.doFinal(checkString.getBytes(StandardCharsets.UTF_8));
-            String computedHash = bytesToHex(hashBytes);
-            System.out.println("Computed hash: " + computedHash);
-            System.out.println("Received hash:  " + receivedHash);
-            System.out.println("Hashes match: " + computedHash.equals(receivedHash));
+            Mac mac = Mac.getInstance(HMAC_ALGO);
+            mac.init(new SecretKeySpec(secretKey, HMAC_ALGO));
+            byte[] hmac = mac.doFinal(dataCheckString.getBytes(StandardCharsets.UTF_8));
 
-            return computedHash.equals(receivedHash);
+            String computedHex = bytesToHex(hmac);
 
+            return computedHex.equalsIgnoreCase(receivedHash);
         } catch (Exception e) {
             e.printStackTrace();
             return false;
         }
     }
 
-    public static Map<String, String> parseRawPairs(String initData) {
-        Map<String, String> map = new HashMap<>();
-        String[] pairs = initData.split("&");
-        for (String pair : pairs) {
-            int idx = pair.indexOf('=');
-            if (idx > 0) {
-                String key = pair.substring(0, idx);
-                String value = pair.substring(idx + 1);
-                map.put(key, value);
-            }
-        }
-        return map;
-    }
-
     public static Map<String, String> parseDecodedParams(String initData) {
         Map<String, String> map = new HashMap<>();
+        if (initData == null) return map;
         String[] pairs = initData.split("&");
         for (String pair : pairs) {
             int idx = pair.indexOf('=');
             if (idx > 0) {
-                String key = URLDecoder.decode(pair.substring(0, idx), StandardCharsets.UTF_8);
-                String value = URLDecoder.decode(pair.substring(idx + 1), StandardCharsets.UTF_8);
-                map.put(key, value);
+                String k = URLDecoder.decode(pair.substring(0, idx), StandardCharsets.UTF_8);
+                String v = URLDecoder.decode(pair.substring(idx + 1), StandardCharsets.UTF_8);
+                map.put(k, v);
             }
         }
         return map;
     }
 
     public static TelegramUserData extractUser(Map<String, String> decodedParams) {
-        String userJson = decodedParams.get("user");
-        if (userJson == null) return null;
         try {
-            long id = Long.parseLong(extractField(userJson, "id"));
-            String firstName = extractField(userJson, "first_name");
-            String lastName = extractField(userJson, "last_name");
-            String username = extractField(userJson, "username");
-            String photoUrl = extractField(userJson, "photo_url");
+            if (decodedParams == null) return null;
+            String userJson = decodedParams.get("user");
+            if (userJson == null) return null;
+
+            JsonNode node = mapper.readTree(userJson);
+            long id = node.has("id") ? node.get("id").asLong() : -1;
+            String firstName = node.has("first_name") ? node.get("first_name").asText("") : "";
+            String lastName = node.has("last_name") ? node.get("last_name").asText("") : "";
+            String username = node.has("username") ? node.get("username").asText("") : "";
+            String photoUrl = node.has("photo_url") ? node.get("photo_url").asText("") : "";
+
+            if (id == -1) return null;
             return new TelegramUserData(id, firstName, lastName, username, photoUrl);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
-    }
-
-    private static String extractField(String json, String field) {
-        String key = "\"" + field + "\":";
-        int start = json.indexOf(key);
-        if (start == -1) return "";
-        start += key.length();
-        if (json.charAt(start) == '"') {
-            int end = json.indexOf('"', start + 1);
-            return json.substring(start + 1, end);
-        } else {
-            int end = json.indexOf(',', start);
-            if (end == -1) end = json.indexOf('}', start);
-            return json.substring(start, end).trim();
-        }
-    }
-
-    private static String bytesToHex(byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", b));
-        }
-        return sb.toString();
     }
 
     public static class TelegramUserData {
@@ -141,5 +103,11 @@ public class TelegramInitDataValidator {
             this.username = username;
             this.photoUrl = photoUrl;
         }
+    }
+
+    private static String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) sb.append(String.format("%02x", b));
+        return sb.toString();
     }
 }
