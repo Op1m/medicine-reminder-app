@@ -66,7 +66,7 @@ public final class TelegramInitDataValidator {
 
             boolean match = computedHex.equalsIgnoreCase(receivedHash);
             System.out.println("match(hex equalsIgnoreCase received): " + match);
-            
+
             StringBuilder sbRaw = new StringBuilder();
             List<String> rawKeys = new ArrayList<>(rawParams.keySet());
             rawKeys.remove("signature");

@@ -1,7 +1,9 @@
 package com.op1m.medrem.backend_api.controller;
 
-import com.op1m.medrem.backend_api.dto.TelegramUserDTO;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.op1m.medrem.backend_api.dto.DTOMapper;
+import com.op1m.medrem.backend_api.dto.TelegramUserDTO;
 import com.op1m.medrem.backend_api.entity.User;
 import com.op1m.medrem.backend_api.security.JwtTokenProvider;
 import com.op1m.medrem.backend_api.security.TelegramInitDataValidator;
@@ -21,8 +23,9 @@ public class TelegramAuthController {
     private final UserService userService;
     private final JwtTokenProvider tokenProvider;
     private final PasswordEncoder passwordEncoder;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Value("${app.telegram.bot-token:}")
+    @Value("${TELEGRAM_BOT_TOKEN:${app.telegram.bot-token:}}")
     private String botToken;
 
     public TelegramAuthController(UserService userService, JwtTokenProvider tokenProvider, PasswordEncoder passwordEncoder) {
@@ -35,31 +38,45 @@ public class TelegramAuthController {
         public String initData;
     }
 
-    @PostMapping(path = {"/telegram", "/auth/telegram", "/api/auth/telegram"})
+    @PostMapping(path = {"/telegram", "/auth/telegram"})
     public ResponseEntity<?> loginWithTelegram(@RequestBody InitDataRequest body) {
+        System.out.println("=== /api/auth/telegram called ===");
+
+        if (body == null || body.initData == null || body.initData.isBlank()) {
+            System.out.println("❌ missing initData");
+            return ResponseEntity.badRequest().body(Map.of("error", "missing initData"));
+        }
+
+        String initData = body.initData;
+
+        System.out.println("raw body.initData: [" + initData + "]");
+
+        boolean ok = TelegramInitDataValidator.validateInitData(initData, botToken);
+        if (!ok) {
+            System.out.println("❌ invalid initData");
+            return ResponseEntity.status(401).body(Map.of("error", "invalid initData"));
+        }
+
         try {
-            System.out.println("=== /api/auth/telegram called ===");
-            if (body == null || body.initData == null || body.initData.isBlank()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "missing initData"));
-            }
-
-            boolean ok = TelegramInitDataValidator.validateInitData(body.initData, botToken);
-            if (!ok) {
-                System.out.println("❌ invalid initData");
-                return ResponseEntity.status(401).body(Map.of("error", "invalid initData"));
-            }
-
-            var decodedParams = TelegramInitDataValidator.parseDecodedParams(body.initData);
-            var userData = TelegramInitDataValidator.extractUser(decodedParams);
-            if (userData == null) {
+            var decodedParams = TelegramInitDataValidator.parseDecodedParams(initData);
+            String userJson = decodedParams.get("user");
+            if (userJson == null || userJson.isBlank()) {
+                System.out.println("❌ user json not present in initData");
                 return ResponseEntity.badRequest().body(Map.of("error", "cannot parse user data"));
             }
 
-            long tgId = userData.id;
-            String firstName = userData.firstName;
-            String lastName = userData.lastName;
-            String username = userData.username;
-            String photoUrl = userData.photoUrl;
+            JsonNode userNode = objectMapper.readTree(userJson);
+
+            long tgId = userNode.has("id") ? userNode.get("id").asLong() : 0L;
+            String firstName = userNode.has("first_name") ? userNode.get("first_name").asText("") : "";
+            String lastName = userNode.has("last_name") ? userNode.get("last_name").asText("") : "";
+            String username = userNode.has("username") ? userNode.get("username").asText("") : "";
+            String photoUrl = userNode.has("photo_url") ? userNode.get("photo_url").asText("") : "";
+
+            if (tgId == 0L) {
+                System.out.println("❌ tgId parsed as 0");
+                return ResponseEntity.badRequest().body(Map.of("error", "cannot parse user id"));
+            }
 
             User user = userService.findByTelegramId(tgId);
             if (user == null) {
@@ -73,12 +90,14 @@ public class TelegramAuthController {
                 String randomPassword = UUID.randomUUID().toString();
                 user.setPassword(passwordEncoder.encode(randomPassword));
                 user = userService.save(user);
+                System.out.println("Created new user id=" + (user.getId() != null ? user.getId() : "n/a") + " tg=" + tgId);
             } else {
                 user.setFirstName(firstName);
                 user.setLastName(lastName);
                 if (username != null && !username.isBlank()) user.setUsername(username);
                 user.setPhotoUrl(photoUrl);
                 user = userService.update(user);
+                System.out.println("Updated user id=" + user.getId() + " tg=" + tgId);
             }
 
             String token = tokenProvider.generateToken(user);
@@ -89,37 +108,32 @@ public class TelegramAuthController {
             ));
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.internalServerError().body(Map.of("error", "internal"));
+            return ResponseEntity.status(500).body(Map.of("error", "internal_error"));
         }
     }
 
     @PostMapping("/telegram/debug")
     public ResponseEntity<?> debugLogin(@RequestBody TelegramUserDTO dto) {
-        try {
-            User user = userService.findByTelegramId(dto.getId());
-            if (user == null) {
-                user = new User();
-                user.setTelegramId(dto.getId());
-                user.setUsername(dto.getUsername() == null ? "tg_" + dto.getId() : dto.getUsername());
-                user.setFirstName(dto.getFirstName());
-                user.setLastName(dto.getLastName());
-                user.setPhotoUrl(dto.getPhotoUrl());
-                user.setEmail("telegram_" + dto.getId() + "@placeholder.local");
-                String randomPassword = UUID.randomUUID().toString();
-                user.setPassword(passwordEncoder.encode(randomPassword));
-                user = userService.save(user);
-            } else {
-                user.setFirstName(dto.getFirstName());
-                user.setLastName(dto.getLastName());
-                if (dto.getUsername() != null) user.setUsername(dto.getUsername());
-                user.setPhotoUrl(dto.getPhotoUrl());
-                user = userService.update(user);
-            }
-            String token = tokenProvider.generateToken(user);
-            return ResponseEntity.ok(Map.of("token", token, "user", DTOMapper.toUserDTO(user)));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().body(Map.of("error", "internal"));
+        User user = userService.findByTelegramId(dto.getId());
+        if (user == null) {
+            user = new User();
+            user.setTelegramId(dto.getId());
+            user.setUsername(dto.getUsername() == null ? "tg_" + dto.getId() : dto.getUsername());
+            user.setFirstName(dto.getFirstName());
+            user.setLastName(dto.getLastName());
+            user.setPhotoUrl(dto.getPhotoUrl());
+            user.setEmail("telegram_" + dto.getId() + "@placeholder.local");
+            String randomPassword = UUID.randomUUID().toString();
+            user.setPassword(passwordEncoder.encode(randomPassword));
+            user = userService.save(user);
+        } else {
+            user.setFirstName(dto.getFirstName());
+            user.setLastName(dto.getLastName());
+            if (dto.getUsername() != null) user.setUsername(dto.getUsername());
+            user.setPhotoUrl(dto.getPhotoUrl());
+            user = userService.update(user);
         }
+        String token = tokenProvider.generateToken(user);
+        return ResponseEntity.ok(Map.of("token", token, "user", DTOMapper.toUserDTO(user)));
     }
 }
