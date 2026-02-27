@@ -55,14 +55,25 @@ public final class TelegramInitDataValidator {
         Map<String, String> copy = new HashMap<>(initData);
         copy.remove("hash");
 
-        List<String> parts = copy.entrySet().stream()
+        List<String> partsRaw = copy.entrySet().stream()
                 .filter(e -> e.getValue() != null)
                 .map(e -> e.getKey() + "=" + e.getValue())
                 .sorted()
                 .collect(Collectors.toList());
 
-        dbg.parts = parts;
-        String dataCheckString = String.join("\n", parts);
+        dbg.parts = partsRaw;
+
+        List<String> normalizedParts = new ArrayList<>(partsRaw.size());
+        for (String kv : partsRaw) {
+            int idx = kv.indexOf('=');
+            String k = kv.substring(0, idx);
+            String v = kv.substring(idx + 1);
+            String normalized = normalizeValueForComparison(v);
+            normalizedParts.add(k + "=" + normalized);
+        }
+
+        dbg.normalizedParts = normalizedParts;
+        String dataCheckString = String.join("\n", normalizedParts);
         dbg.dataCheckString = dataCheckString;
 
         try {
@@ -79,6 +90,7 @@ public final class TelegramInitDataValidator {
             dbg.ok = constantTimeEquals(dbg.calcHex, providedLower);
 
             if (!dbg.ok) {
+                dbg.error = "hash_mismatch";
                 return dbg;
             }
 
@@ -88,11 +100,11 @@ public final class TelegramInitDataValidator {
                     long now = System.currentTimeMillis() / 1000L;
                     if (Math.abs(now - auth) > 86400L) {
                         dbg.ok = false;
-                        dbg.error = "auth_date expired";
+                        dbg.error = "auth_date_expired";
                     }
                 } catch (NumberFormatException ex) {
                     dbg.ok = false;
-                    dbg.error = "invalid auth_date";
+                    dbg.error = "invalid_auth_date";
                 }
             }
 
@@ -109,6 +121,16 @@ public final class TelegramInitDataValidator {
         DebugInfo d = validateWithDebug(initData, botToken);
         if (!d.ok) throw new Exception("telegram init data invalid: " + (d.error != null ? d.error : "hash mismatch"));
         return true;
+    }
+
+    private static String normalizeValueForComparison(String v) {
+        if (v == null) return "";
+        String s = v;
+        if ((s.startsWith("{") && s.endsWith("}")) || (s.startsWith("[") && s.endsWith("]"))) {
+            s = s.replace("\\/", "/");
+            s = s.replace("\r", "");
+        }
+        return s;
     }
 
     private static String urlDecodeSafe(String s) {
@@ -139,6 +161,7 @@ public final class TelegramInitDataValidator {
         public String note;
         public List<String> receivedKeys;
         public List<String> parts;
+        public List<String> normalizedParts;
         public String dataCheckString;
         public String providedHash;
         public String calcHex;
