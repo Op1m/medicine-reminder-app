@@ -1,192 +1,301 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>Telegram WebApp Debug</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>🔍 Диагностика препаратов</title>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            padding: 20px;
-            background: #f5f5f5;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        button {
-            background: #2e7aff;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            width: 100%;
-            margin: 10px 0;
-        }
-        pre {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-            overflow-x: auto;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        .data-block {
-            margin: 15px 0;
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            border-left: 4px solid #2e7aff;
-        }
-        .label {
-            font-weight: bold;
-            color: #666;
-            margin-bottom: 5px;
-        }
+        body { font-family: monospace; padding: 16px; background: #f5f5f5; margin: 0; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 24px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1 { font-size: 20px; margin-top: 0; }
+        .log { background: #1e1e2f; color: #aaffaa; padding: 12px; border-radius: 12px; white-space: pre-wrap; word-break: break-word; font-size: 12px; max-height: 400px; overflow-y: auto; }
+        .section { margin: 20px 0; padding: 12px; background: #f0f4f8; border-radius: 12px; }
+        .label { font-weight: bold; margin-bottom: 8px; color: #0a2540; }
+        .value { background: white; padding: 8px; border-radius: 8px; border: 1px solid #ddd; font-size: 13px; overflow-x: auto; }
+        button { background: #2e7aff; color: white; border: none; padding: 12px 20px; border-radius: 30px; font-weight: bold; width: 100%; margin: 8px 0; cursor: pointer; }
+        button.secondary { background: #6c757d; }
+        .badge { background: #2e7aff; color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; display: inline-block; margin: 2px; }
     </style>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-<h2>🔍 Telegram WebApp Debug</h2>
+<div class="container">
+    <h1>🔍 Диагностика препаратов</h1>
 
-<div class="data-block">
-    <div class="label">📱 Telegram WebApp данные:</div>
-    <pre id="telegramData">Загрузка...</pre>
+    <div class="section">
+        <div class="label">👤 Текущий пользователь</div>
+        <div class="value" id="userDisplay">—</div>
+    </div>
+
+    <div class="section">
+        <div class="label">📅 Выбранный день</div>
+        <div class="value" id="selectedDayDisplay">—</div>
+    </div>
+
+    <div class="section">
+        <div class="label">📦 Все напоминания (reminders)</div>
+        <div class="value" id="remindersDisplay">—</div>
+    </div>
+
+    <div class="section">
+        <div class="label">📊 История на выбранный день</div>
+        <div class="value" id="historyDisplay">—</div>
+    </div>
+
+    <div class="section">
+        <div class="label">🔎 Отфильтрованные на день</div>
+        <div class="value" id="filteredDisplay">—</div>
+    </div>
+
+    <div class="section">
+        <div class="label">📋 Последние действия (лог)</div>
+        <div class="log" id="logArea">⏳ Загрузка...</div>
+    </div>
+
+    <button id="createTestBtn">🧪 Создать тестовый препарат (08:30, everyday)</button>
+    <button id="refreshBtn" class="secondary">🔄 Обновить данные</button>
+    <button id="clearBtn" class="secondary">🗑️ Очистить лог</button>
 </div>
 
-<button id="loginBtn">🚀 Войти через Telegram</button>
-
-<div class="data-block">
-    <div class="label">📡 Ответ сервера:</div>
-    <pre id="serverResponse">—</pre>
-</div>
-
-<div class="data-block">
-    <div class="label">👤 Данные пользователя (currentUser):</div>
-    <pre id="userData">—</pre>
-</div>
-
-<div class="data-block">
-    <div class="label">🔑 Токен:</div>
-    <pre id="tokenData">—</pre>
-</div>
-
-<div class="data-block">
-    <div class="label">📋 Что отправляем в reminder:</div>
-    <pre id="reminderData">—</pre>
-</div>
-
-<button id="testReminderBtn" disabled>💊 Тест создания препарата</button>
-<pre id="reminderResponse">—</pre>
-
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>
-    const API_BASE = 'https://medicine-reminder-app-t3u9.onrender.com/api';
-    let currentUser = null;
-    let authToken = null;
+    (function() {
+        const API_BASE = 'https://medicine-reminder-app-t3u9.onrender.com/api';
+        const TOKEN_KEY = 'med_token';
+        const USER_KEY = 'med_user';
 
-    // Показываем данные из Telegram
-    function showTelegramData() {
-        const tg = window.Telegram?.WebApp;
-        const data = {
-            hasTelegram: !!tg,
-            initData: tg?.initData || '—',
-            initDataUnsafe: tg?.initDataUnsafe || '—',
-            user: tg?.initDataUnsafe?.user || '—'
-        };
-        document.getElementById('telegramData').textContent = JSON.stringify(data, null, 2);
-        console.log('Telegram Data:', data);
-    }
+        let currentUser = null;
+        let authToken = localStorage.getItem(TOKEN_KEY);
+        let reminders = [];
+        let historyMap = new Map();
+        let selectedDay = new Date();
+        let logLines = [];
 
-    // Вход через Telegram
-    async function loginWithTelegram() {
-        const tg = window.Telegram?.WebApp;
-        if (!tg || !tg.initData) {
-            alert('Это приложение должно быть открыто через Telegram WebApp!');
-            return;
+        // Элементы
+        const userDisplay = document.getElementById('userDisplay');
+        const selectedDayDisplay = document.getElementById('selectedDayDisplay');
+        const remindersDisplay = document.getElementById('remindersDisplay');
+        const historyDisplay = document.getElementById('historyDisplay');
+        const filteredDisplay = document.getElementById('filteredDisplay');
+        const logArea = document.getElementById('logArea');
+        const createTestBtn = document.getElementById('createTestBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const clearBtn = document.getElementById('clearBtn');
+
+        function log(...args) {
+            const line = args.map(a =>
+                typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+            ).join(' ');
+            logLines.unshift(`🕒 ${new Date().toLocaleTimeString()}: ${line}`);
+            if (logLines.length > 30) logLines.pop();
+            logArea.innerText = logLines.join('\n');
+            console.log(...args);
         }
 
-        document.getElementById('serverResponse').textContent = '⏳ Отправка запроса...';
-
-        try {
-            const response = await fetch(`${API_BASE}/auth/telegram`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ initData: tg.initData })
+        async function apiFetch(endpoint, options = {}) {
+            const headers = {
+                'Content-Type': 'application/json',
+                ...options.headers,
+            };
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+            const response = await fetch(API_BASE + endpoint, {
+                ...options,
+                headers,
             });
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || `HTTP ${response.status}`);
+            }
+            return response.json();
+        }
 
-            const data = await response.json();
-            document.getElementById('serverResponse').textContent = JSON.stringify(data, null, 2);
-            console.log('Server response:', data);
+        async function loginWithTelegram() {
+            const tg = window.Telegram?.WebApp;
+            if (!tg || !tg.initData) {
+                currentUser = { id: 1, firstName: 'Тест', lastName: '', username: 'test', photoUrl: null };
+                authToken = 'fake-token';
+                localStorage.setItem(TOKEN_KEY, authToken);
+                localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
+                updateUserInfo();
+                await loadReminders();
+                return;
+            }
 
-            if (response.ok) {
+            try {
+                const data = await apiFetch('/auth/telegram', {
+                    method: 'POST',
+                    body: JSON.stringify({ initData: tg.initData }),
+                });
                 authToken = data.token;
                 currentUser = data.user;
-
-                document.getElementById('userData').textContent = JSON.stringify(currentUser, null, 2);
-                document.getElementById('tokenData').textContent = authToken;
-
-                // Показываем, что будем отправлять в reminder
-                const reminderPayload = {
-                    userId: currentUser.id,  // то, что сейчас отправляется
-                    medicineId: 1,
-                    reminderTime: '08:30',
-                    daysOfWeek: 'everyday'
-                };
-                document.getElementById('reminderData').textContent = JSON.stringify(reminderPayload, null, 2);
-
-                document.getElementById('testReminderBtn').disabled = false;
+                log('✅ Вход через Telegram успешен');
+                log('Данные пользователя:', currentUser);
+                localStorage.setItem(TOKEN_KEY, authToken);
+                localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
+                await loadReminders();
+            } catch (err) {
+                log('❌ Ошибка входа:', err.message);
+                currentUser = { id: 1, firstName: 'Ошибка', lastName: '', username: 'error', photoUrl: null };
             }
-        } catch (err) {
-            document.getElementById('serverResponse').textContent = '❌ Ошибка: ' + err.message;
-            console.error(err);
+            updateUserInfo();
         }
-    }
 
-    // Тест создания препарата
-    async function testCreateReminder() {
-        if (!currentUser || !authToken) return;
+        async function loadReminders() {
+            if (!currentUser) return;
+            try {
+                log('Загрузка напоминаний для userId:', currentUser.id);
+                const data = await apiFetch(`/reminders/user/${currentUser.id}`);
+                reminders = data;
+                log('📦 Получено напоминаний:', reminders.length);
+                log('Список ID:', reminders.map(r => r.id));
+                await loadHistoryForDate(selectedDay);
+            } catch (err) {
+                log('❌ Ошибка загрузки напоминаний:', err.message);
+            }
+            updateDisplay();
+        }
 
-        const payload = {
-            userId: currentUser.id,
-            medicineId: 1,
-            reminderTime: '08:30',
-            daysOfWeek: 'everyday'
-        };
+        async function loadHistoryForDate(date) {
+            if (!currentUser) return;
+            const start = new Date(date);
+            start.setHours(0,0,0,0);
+            const end = new Date(date);
+            end.setHours(23,59,59,999);
 
-        document.getElementById('reminderResponse').textContent = '⏳ Создание...';
+            const startISO = start.toISOString();
+            const endISO = end.toISOString();
 
-        try {
-            const response = await fetch(`${API_BASE}/reminders`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authToken}`
-                },
-                body: JSON.stringify(payload)
+            try {
+                log('Загрузка истории на', date.toDateString());
+                const history = await apiFetch(`/medicine-history/user/${currentUser.id}/period?start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}`);
+                const dateKey = date.toISOString().split('T')[0];
+                historyMap.set(dateKey, history);
+                log('📊 Получено записей истории:', history.length);
+            } catch (err) {
+                log('❌ Ошибка загрузки истории:', err.message);
+            }
+        }
+
+        function remindersForDate(date) {
+            const dayOfWeek = date.getDay() === 0 ? 7 : date.getDay();
+            log('🔎 Фильтрация по дню:', date.toDateString(), 'день недели:', dayOfWeek);
+            const filtered = reminders.filter(r => {
+                const days = r.daysOfWeek;
+                log(`  ⏺ Напоминание ${r.id} (${r.medicine.name}), days: "${days}"`);
+                if (days === 'everyday') return true;
+                const daysArray = days.split(',').map(d => parseInt(d));
+                const matches = daysArray.includes(dayOfWeek);
+                log(`    дни: ${daysArray}, совпадение: ${matches}`);
+                return matches;
             });
-
-            const data = await response.json();
-            document.getElementById('reminderResponse').textContent = JSON.stringify(data, null, 2);
-            console.log('Reminder response:', data);
-
-            if (!response.ok) {
-                alert('Ошибка создания: ' + (data.message || response.status));
-            } else {
-                alert('✅ Препарат создан! ID: ' + data.id);
-            }
-        } catch (err) {
-            document.getElementById('reminderResponse').textContent = '❌ Ошибка: ' + err.message;
-            console.error(err);
+            log('✅ После фильтрации осталось:', filtered.length);
+            return filtered;
         }
-    }
 
-    // Инициализация
-    document.addEventListener('DOMContentLoaded', () => {
-        showTelegramData();
+        function getStatusForReminderOnDate(reminder, date) {
+            const dateKey = date.toISOString().split('T')[0];
+            const history = historyMap.get(dateKey) || [];
+            const entry = history.find(h => h.reminder.id === reminder.id);
+            return entry ? entry.status.toLowerCase() : 'pending';
+        }
 
-        document.getElementById('loginBtn').addEventListener('click', loginWithTelegram);
-        document.getElementById('testReminderBtn').addEventListener('click', testCreateReminder);
-    });
+        function updateDisplay() {
+            userDisplay.innerText = JSON.stringify(currentUser, null, 2) || '—';
+            selectedDayDisplay.innerText = selectedDay.toDateString() + ' (день недели: ' + (selectedDay.getDay() === 0 ? 7 : selectedDay.getDay()) + ')';
+            remindersDisplay.innerText = reminders.length ? JSON.stringify(reminders.map(r => ({
+                id: r.id,
+                name: r.medicine.name,
+                time: r.reminderTime,
+                days: r.daysOfWeek,
+                medicineId: r.medicine.id
+            })), null, 2) : '—';
+
+            const dateKey = selectedDay.toISOString().split('T')[0];
+            const history = historyMap.get(dateKey) || [];
+            historyDisplay.innerText = history.length ? JSON.stringify(history.map(h => ({
+                id: h.id,
+                reminderId: h.reminder.id,
+                status: h.status,
+                time: h.scheduledTime
+            })), null, 2) : '—';
+
+            const filtered = remindersForDate(selectedDay);
+            filteredDisplay.innerText = filtered.length ? JSON.stringify(filtered.map(r => ({
+                id: r.id,
+                name: r.medicine.name,
+                status: getStatusForReminderOnDate(r, selectedDay)
+            })), null, 2) : '—';
+        }
+
+        async function createTestReminder() {
+            if (!currentUser) return;
+            try {
+                log('🧪 Создание тестового лекарства и напоминания...');
+                const medicine = await apiFetch('/medicines', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name: 'Тестовый препарат ' + new Date().toLocaleTimeString(),
+                        dosage: '1 таб.',
+                        description: '',
+                        instructions: 'во время еды',
+                    }),
+                });
+                log('✅ Лекарство создано, ID:', medicine.id);
+
+                const reminder = await apiFetch('/reminders', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        medicineId: medicine.id,
+                        reminderTime: '08:30',
+                        daysOfWeek: 'everyday',
+                    }),
+                });
+                log('✅ Напоминание создано, ID:', reminder.id);
+                log('Полный ответ:', reminder);
+
+                reminders.push(reminder);
+                log('📦 Массив reminders после push содержит ID:', reminders.map(r => r.id));
+
+                await loadHistoryForDate(selectedDay);
+                updateDisplay();
+                log('🔄 Отображение обновлено');
+            } catch (err) {
+                log('❌ Ошибка создания:', err.message);
+            }
+        }
+
+        createTestBtn.addEventListener('click', createTestReminder);
+        refreshBtn.addEventListener('click', async () => {
+            log('🔄 Принудительное обновление');
+            await loadReminders();
+            updateDisplay();
+        });
+        clearBtn.addEventListener('click', () => {
+            logLines = [];
+            logArea.innerText = '';
+        });
+
+        (async function init() {
+            log('🚀 Запуск диагностики');
+            const savedUser = localStorage.getItem(USER_KEY);
+            if (savedUser) {
+                try {
+                    currentUser = JSON.parse(savedUser);
+                    authToken = localStorage.getItem(TOKEN_KEY);
+                    log('👤 Загружен пользователь из localStorage');
+                    await loadReminders();
+                } catch (e) {
+                    log('❌ Ошибка парсинга localStorage');
+                }
+            }
+            if (!currentUser) {
+                await loginWithTelegram();
+            }
+            updateDisplay();
+        })();
+    })();
 </script>
 </body>
 </html>
