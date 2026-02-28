@@ -69,8 +69,10 @@ public class ReminderServiceImpl implements ReminderService{
             throw new RuntimeException("❌ ReminderService: Пользователь с ID " + userId + " не найден");
         }
 
+        System.out.println("Finding reminders for user " + user.getId() + ", user=" + user);
         List<Reminder> reminders = reminderRepository.findByUser(user);
-        System.out.println("✅ ReminderService: Найдено напоминаний: " + reminders.size());
+        System.out.println("Found " + reminders.size() + " reminders");
+        reminders.forEach(r -> System.out.println("  reminder id=" + r.getId()));
         return reminders;
     }
 
@@ -183,9 +185,11 @@ public class ReminderServiceImpl implements ReminderService{
         boolean timeMatches = now.getHour() == reminderTime.getHour() &&
                 now.getMinute() == reminderTime.getMinute();
 
-        boolean dayMathes = checkDayOfWeek(reminder, now);
+        boolean dayMatches = checkDayOfWeek(reminder, now);
 
-        return timeMatches && dayMathes;
+        System.out.println("Checking reminder " + reminder.getId() + " at " + now + " with time " + reminderTime + ", timeMatches=" + timeMatches + ", dayMatches=" + dayMatches);
+
+        return timeMatches && dayMatches;
     }
 
     private boolean checkDayOfWeek(Reminder reminder, LocalDateTime now) {
