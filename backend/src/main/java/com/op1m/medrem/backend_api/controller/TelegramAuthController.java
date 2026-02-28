@@ -1,16 +1,24 @@
 package com.op1m.medrem.backend_api.controller;
 
+import com.op1m.medrem.backend_api.dto.DTOMapper;
+import com.op1m.medrem.backend_api.dto.UserDTO;
+import com.op1m.medrem.backend_api.entity.User;
+import com.op1m.medrem.backend_api.security.JwtTokenProvider;
 import com.op1m.medrem.backend_api.security.TelegramInitDataValidator;
 import com.op1m.medrem.backend_api.security.TelegramInitDataValidator.DebugInfo;
+import com.op1m.medrem.backend_api.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -23,6 +31,15 @@ public class TelegramAuthController {
 
     @Value("${telegram.bot.token:${TELEGRAM_BOT_TOKEN:}}")
     private String botToken;
+
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private JwtTokenProvider tokenProvider;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> fromWidget(@RequestBody Map<String, Object> body) {
@@ -69,26 +86,51 @@ public class TelegramAuthController {
             unpacked.putAll(data);
         }
 
-        Map<String, Object> user = new LinkedHashMap<>();
-
-        if (unpacked.containsKey("user")) {
-            try {
-                Map<String, Object> parsed =
-                        new com.fasterxml.jackson.databind.ObjectMapper()
-                                .readValue(unpacked.get("user"), Map.class);
-
-                user.putAll(parsed);
-            } catch (Exception ignored) {}
-        }
-
-        if (user.isEmpty()) {
+        Map<String, Object> userMap = extractUser(unpacked);
+        if (userMap.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("ok", false, "error", "user not found in initData"));
         }
 
+        Long tgId = Long.parseLong((String) userMap.get("id"));
+        String firstName = (String) userMap.get("first_name");
+        String lastName = (String) userMap.get("last_name");
+        String username = (String) userMap.get("username");
+        String photoUrl = (String) userMap.get("photo_url");
+
+        User user = userService.findByTelegramId(tgId);
+        if (user == null) {
+            user = new User();
+            user.setTelegramId(tgId);
+            user.setUsername(username != null ? username : "tg_" + tgId);
+            user.setFirstName(firstName);
+            user.setLastName(lastName);
+            user.setPhotoUrl(photoUrl);
+            user.setEmail("telegram_" + tgId + "@placeholder.local");
+            user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+            user.setCreatedAt(LocalDateTime.now());
+            user.setUpdatedAt(LocalDateTime.now());
+            user.setActive(true);
+            user = userService.save(user);
+        } else {
+            user.setFirstName(firstName);
+            user.setLastName(lastName);
+            if (username != null && !username.isBlank()) {
+                user.setUsername(username);
+            }
+            user.setPhotoUrl(photoUrl);
+            user.setUpdatedAt(LocalDateTime.now());
+            user = userService.update(user);
+        }
+
+        String token = tokenProvider.generateToken(user);
+
+        UserDTO userDTO = DTOMapper.toUserDTO(user);
+
         return ResponseEntity.ok(Map.of(
                 "ok", true,
-                "user", user
+                "token", token,
+                "user", userDTO
         ));
     }
 

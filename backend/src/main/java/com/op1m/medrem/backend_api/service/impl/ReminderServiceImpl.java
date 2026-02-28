@@ -40,7 +40,7 @@ public class ReminderServiceImpl implements ReminderService{
         System.out.println("currentUser:" + user);
         System.out.println("userId для reminder:" + user.getId());
         System.out.println("telegramId:" + user.getTelegramChatId());
-        
+
         if (user == null) {
             throw new RuntimeException("❌ ReminderService: Пользователь с ID " + userId + " не найден");
         }
