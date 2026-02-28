@@ -36,6 +36,11 @@ public class ReminderServiceImpl implements ReminderService{
         System.out.println("⏰ ReminderService: Создание напоминания: user=" + userId + ", medicine=" + medicineId + ", time=" + reminderTime);
 
         User user = userService.findById(userId);
+
+        System.out.println("currentUser:" + user);
+        System.out.println("userId для reminder:" + user.getId());
+        System.out.println("telegramId:" + user.getTelegramChatId());
+        
         if (user == null) {
             throw new RuntimeException("❌ ReminderService: Пользователь с ID " + userId + " не найден");
         }
@@ -198,7 +203,7 @@ public class ReminderServiceImpl implements ReminderService{
     @Override
     public Reminder updateReminder(Long reminderId, Long medicineId, LocalTime reminderTime, String daysOfWeek) {
         System.out.println("✏️ ReminderService: Обновление напоминания: " + reminderId);
-        
+
         Reminder reminder = reminderRepository.findById(reminderId)
                 .orElseThrow(() -> new RuntimeException("❌ ReminderService: Напоминание с ID " + reminderId + " не найдено"));
 
