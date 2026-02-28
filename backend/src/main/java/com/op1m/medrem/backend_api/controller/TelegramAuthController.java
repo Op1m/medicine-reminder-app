@@ -94,7 +94,6 @@ public class TelegramAuthController {
 
     private Map<String, Object> extractUser(Map<String, String> d) {
         Map<String, Object> u = new LinkedHashMap<>();
-        // 1) если присутствует ключ "user" и это JSON-строка — распарсить
         if (d.containsKey("user")) {
             String userRaw = d.get("user");
             if (userRaw != null && (userRaw.startsWith("{") || userRaw.startsWith("["))) {
@@ -102,7 +101,6 @@ public class TelegramAuthController {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> parsed = OM.readValue(userRaw, Map.class);
                     if (parsed != null) {
-                        // перенести только нужные поля
                         copyIfPresent(parsed, "id", u);
                         copyIfPresent(parsed, "first_name", u);
                         copyIfPresent(parsed, "last_name", u);
@@ -117,7 +115,6 @@ public class TelegramAuthController {
             }
         }
 
-        // 2) fallback: брать плоские поля из параметров
         copyIfPresent(d, "id", u);
         copyIfPresent(d, "first_name", u);
         copyIfPresent(d, "last_name", u);
