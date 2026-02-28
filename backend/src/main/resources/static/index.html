@@ -1265,6 +1265,7 @@
             try {
                 const data = await apiFetch(`/reminders/user/${currentUser.id}`);
                 reminders = data;
+                console.log('Загружены напоминания:', reminders);
                 await loadHistoryForDate(selectedDay);
             } catch (err) {
                 console.error('Ошибка загрузки напоминаний', err);
@@ -1285,6 +1286,7 @@
                 const history = await apiFetch(`/medicine-history/user/${currentUser.id}/period?start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}`);
                 const dateKey = date.toISOString().split('T')[0];
                 historyMap.set(dateKey, history);
+                console.log(`История на ${dateKey}:`, history);
                 renderGroupsForDate(date);
             } catch (err) {
                 console.error('Ошибка загрузки истории', err);
@@ -1313,6 +1315,7 @@
 
         function renderGroupsForDate(date) {
             const filtered = remindersForDate(date);
+            console.log(`Отображаем ${filtered.length} напоминаний на ${date.toDateString()}`);
             if (filtered.length === 0) {
                 contentDiv.innerHTML = `
                     <div class="empty-state">
@@ -1613,6 +1616,7 @@
                     }),
                 });
                 reminders.push(reminder);
+                console.log('Создано напоминание:', reminder);
                 await loadHistoryForDate(selectedDay);
             } catch (err) {
                 console.error(err);
@@ -1625,21 +1629,29 @@
                 const reminder = reminders.find(r => r.id === reminderId);
                 if (!reminder) return;
                 const now = new Date();
-                const scheduledTime = new Date(now.toDateString() + ' ' + reminder.reminderTime).toISOString();
+                const [hour, minute] = reminder.reminderTime.split(':').map(Number);
+                const scheduledTime = new Date(now);
+                scheduledTime.setHours(hour, minute, 0, 0);
+                const scheduledISO = scheduledTime.toISOString();
+
+                console.log('Отметка принятия:', { reminderId, scheduledISO });
+
                 const history = await apiFetch('/medicine-history/schedule', {
                     method: 'POST',
                     body: JSON.stringify({
                         reminderId,
-                        scheduledTime,
+                        scheduledTime: scheduledISO,
                     }),
                 });
+                console.log('История создана:', history);
                 await apiFetch(`/medicine-history/${history.id}/mark-taken`, {
                     method: 'PATCH',
                     body: JSON.stringify({ notes: '' }),
                 });
+                console.log('Статус принят');
                 await loadHistoryForDate(selectedDay);
             } catch (err) {
-                console.error(err);
+                console.error('Ошибка отметки принятия:', err);
             }
         }
 
@@ -1648,20 +1660,28 @@
                 const reminder = reminders.find(r => r.id === reminderId);
                 if (!reminder) return;
                 const now = new Date();
-                const scheduledTime = new Date(now.toDateString() + ' ' + reminder.reminderTime).toISOString();
+                const [hour, minute] = reminder.reminderTime.split(':').map(Number);
+                const scheduledTime = new Date(now);
+                scheduledTime.setHours(hour, minute, 0, 0);
+                const scheduledISO = scheduledTime.toISOString();
+
+                console.log('Отметка пропуска:', { reminderId, scheduledISO });
+
                 const history = await apiFetch('/medicine-history/schedule', {
                     method: 'POST',
                     body: JSON.stringify({
                         reminderId,
-                        scheduledTime,
+                        scheduledTime: scheduledISO,
                     }),
                 });
+                console.log('История создана:', history);
                 await apiFetch(`/medicine-history/${history.id}/mark-skipped`, {
                     method: 'PATCH',
                 });
+                console.log('Статус пропущен');
                 await loadHistoryForDate(selectedDay);
             } catch (err) {
-                console.error(err);
+                console.error('Ошибка отметки пропуска:', err);
             }
         }
 
@@ -1669,6 +1689,7 @@
             try {
                 await apiFetch(`/reminders/${reminderId}`, { method: 'DELETE' });
                 reminders = reminders.filter(r => r.id !== reminderId);
+                console.log('Напоминание удалено');
                 await loadHistoryForDate(selectedDay);
             } catch (err) {
                 console.error(err);
