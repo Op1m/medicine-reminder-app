@@ -1237,6 +1237,7 @@
                 });
                 authToken = data.token;
                 currentUser = data.user;
+                console.log('User from server:', data.user);
                 localStorage.setItem(TOKEN_KEY, authToken);
                 localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
                 updateUserInfo(currentUser);

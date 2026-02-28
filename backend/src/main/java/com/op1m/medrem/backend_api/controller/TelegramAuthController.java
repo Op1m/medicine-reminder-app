@@ -112,6 +112,7 @@ public class TelegramAuthController {
             user.setUpdatedAt(LocalDateTime.now());
             user.setActive(true);
             user = userService.save(user);
+            System.out.println(">>> Created new user with id=" + user.getId() + ", telegramId=" + user.getTelegramId());
         } else {
             user.setFirstName(firstName);
             user.setLastName(lastName);
@@ -121,11 +122,14 @@ public class TelegramAuthController {
             user.setPhotoUrl(photoUrl);
             user.setUpdatedAt(LocalDateTime.now());
             user = userService.update(user);
+            System.out.println(">>> Updated existing user with id=" + user.getId() + ", telegramId=" + user.getTelegramId());
         }
 
         String token = tokenProvider.generateToken(user);
 
         UserDTO userDTO = DTOMapper.toUserDTO(user);
+
+        System.out.println(">>> Returning user: id=" + user.getId() + ", telegramId=" + user.getTelegramId() + ", username=" + user.getUsername());
 
         return ResponseEntity.ok(Map.of(
                 "ok", true,
