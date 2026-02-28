@@ -1269,36 +1269,51 @@
 
         async function loadReminders() {
             if (!currentUser) {
-                console.warn('loadReminders: currentUser is null');
+                alert('❌ currentUser = null');
                 return;
             }
+
             try {
-                console.log('GET /reminders/user/' + currentUser.id);
+                alert('Загружаем напоминания для userId = ' + currentUser.id);
+
                 const data = await apiFetch(`/reminders/user/${currentUser.id}`);
-                reminders = Array.isArray(data) ? data : [];
-                console.log('Загружены напоминания:', reminders);
+
+                if (!Array.isArray(data)) {
+                    alert('⚠️ Сервер вернул не массив:\n\n' + JSON.stringify(data));
+                    reminders = [];
+                } else {
+                    reminders = data;
+                    alert('✅ Загружено напоминаний: ' + reminders.length);
+                }
+
                 await loadHistoryForDate(selectedDay);
+
             } catch (err) {
-                console.error('Ошибка загрузки напоминаний', err);
+                alert('❌ Ошибка загрузки напоминаний:\n\n' + (err.message || err));
             }
         }
 
         async function loadHistoryForDate(date) {
             if (!currentUser) return;
-            const start = new Date(date); start.setHours(0,0,0,0);
-            const end = new Date(date); end.setHours(23,59,59,999);
-            const startISO = start.toISOString();
-            const endISO = end.toISOString();
+
+            const start = new Date(date);
+            start.setHours(0,0,0,0);
+
+            const end = new Date(date);
+            end.setHours(23,59,59,999);
 
             try {
-                console.log(`GET /medicine-history/user/${currentUser.id}/period?start=${startISO}&end=${endISO}`);
-                const history = await apiFetch(`/medicine-history/user/${currentUser.id}/period?start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}`);
+                const history = await apiFetch(
+                    `/medicine-history/user/${currentUser.id}/period?start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`
+                );
+
                 const dateKey = date.toISOString().split('T')[0];
                 historyMap.set(dateKey, Array.isArray(history) ? history : []);
-                console.log(`История на ${dateKey}:`, history);
+
                 renderGroupsForDate(date);
+
             } catch (err) {
-                console.error('Ошибка загрузки истории', err);
+                alert('❌ Ошибка загрузки истории:\n\n' + (err.message || err));
                 renderGroupsForDate(date);
             }
         }
@@ -1473,27 +1488,37 @@
         async function markReminderAsTaken(reminderId) {
             try {
                 const reminder = reminders.find(r => r.id === reminderId);
-                if (!reminder) return;
+                if (!reminder) {
+                    alert('Напоминание не найдено');
+                    return;
+                }
+
                 const now = new Date();
-                const [hour = 0, minute = 0] = (reminder.reminderTime || '00:00').split(':').map(Number);
+                const [hour = 0, minute = 0] = (reminder.reminderTime || '00:00')
+                    .split(':')
+                    .map(Number);
+
                 const scheduledTime = new Date(now);
                 scheduledTime.setHours(hour, minute, 0, 0);
                 const scheduledISO = scheduledTime.toISOString();
 
-                console.log('Отметка принятия:', { reminderId, scheduledISO });
-
                 const history = await apiFetch('/medicine-history/schedule', {
                     method: 'POST',
-                    body: JSON.stringify({ reminderId, scheduledTime: scheduledISO })
+                    body: JSON.stringify({
+                        reminderId,
+                        scheduledTime: scheduledISO
+                    })
                 });
+
                 await apiFetch(`/medicine-history/${history.id}/mark-taken`, {
                     method: 'PATCH',
                     body: JSON.stringify({ notes: '' })
                 });
-                console.log('Статус принят');
+
                 await loadHistoryForDate(selectedDay);
+
             } catch (err) {
-                console.error('Ошибка отметки принятия:', err);
+                alert('Ошибка при отметке приёма:\n\n' + (err.message || err));
                 throw err;
             }
         }
