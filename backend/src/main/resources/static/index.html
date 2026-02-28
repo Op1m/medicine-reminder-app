@@ -1125,11 +1125,17 @@
             </div>
         </div>
     </div>
+    <button onClick="localStorage.clear(); alert('localStorage cleared'); location.reload();"
+            style="position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+               background: #ff4444; color: white; border: none; border-radius: 30px;
+               padding: 12px 20px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+        🧹 Очистить хранилище
+    </button>
 </div>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>
-    (function() {
+    (function () {
         const API_BASE = 'https://medicine-reminder-app-t3u9.onrender.com/api';
         const TOKEN_KEY = 'med_token';
         const USER_KEY = 'med_user';
@@ -1221,7 +1227,7 @@
         async function loginWithTelegram() {
             const tg = window.Telegram?.WebApp;
             if (!tg || !tg.initData) {
-                currentUser = { id: 1, firstName: 'Тест', lastName: '', username: 'test', photoUrl: null };
+                currentUser = {id: 1, firstName: 'Тест', lastName: '', username: 'test', photoUrl: null};
                 authToken = 'fake-token';
                 localStorage.setItem(TOKEN_KEY, authToken);
                 localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
@@ -1233,7 +1239,7 @@
             try {
                 const data = await apiFetch('/auth/telegram', {
                     method: 'POST',
-                    body: JSON.stringify({ initData: tg.initData }),
+                    body: JSON.stringify({initData: tg.initData}),
                 });
                 authToken = data.token;
                 currentUser = data.user;
@@ -1244,7 +1250,7 @@
                 await loadReminders();
             } catch (err) {
                 console.error(err);
-                currentUser = { id: 1, firstName: 'Ошибка', lastName: '', username: 'error', photoUrl: null };
+                currentUser = {id: 1, firstName: 'Ошибка', lastName: '', username: 'error', photoUrl: null};
                 updateUserInfo(currentUser);
             }
         }
@@ -1304,7 +1310,7 @@
                 });
                 await apiFetch(`/medicine-history/${history.id}/mark-taken`, {
                     method: 'PATCH',
-                    body: JSON.stringify({ notes: '' }),
+                    body: JSON.stringify({notes: ''}),
                 });
                 await loadReminders();
             } catch (err) {
@@ -1336,7 +1342,7 @@
 
         async function deleteReminder(reminderId) {
             try {
-                await apiFetch(`/reminders/${reminderId}`, { method: 'DELETE' });
+                await apiFetch(`/reminders/${reminderId}`, {method: 'DELETE'});
                 reminders = reminders.filter(r => r.id !== reminderId);
                 renderGroups();
             } catch (err) {
@@ -1387,7 +1393,7 @@
                 chip.className = 'day-chip';
                 if (day.toDateString() === today.toDateString()) chip.classList.add('today');
                 if (selectedDay && day.toDateString() === selectedDay.toDateString()) chip.classList.add('selected');
-                chip.innerHTML = `<div class="day-number">${day.getDate()}</div><div class="day-name">${day.toLocaleString('ru', { weekday: 'short' }).slice(0,2).toUpperCase()}</div>`;
+                chip.innerHTML = `<div class="day-number">${day.getDate()}</div><div class="day-name">${day.toLocaleString('ru', {weekday: 'short'}).slice(0, 2).toUpperCase()}</div>`;
                 chip.addEventListener('click', () => {
                     document.querySelectorAll('.day-chip').forEach(c => c.classList.remove('selected'));
                     chip.classList.add('selected');
@@ -1395,7 +1401,10 @@
                 });
                 weekRow.appendChild(chip);
             });
-            monthLabel.childNodes[0].nodeValue = centerDate.toLocaleString('ru', { month: 'long', year: 'numeric' }).replace(' г.', '') + ' ';
+            monthLabel.childNodes[0].nodeValue = centerDate.toLocaleString('ru', {
+                month: 'long',
+                year: 'numeric'
+            }).replace(' г.', '') + ' ';
         }
 
         let collapsedGroups = [];
@@ -1413,7 +1422,7 @@
             } else {
                 const groups = {};
                 reminders.forEach(r => {
-                    const time = r.reminderTime.substring(0,5);
+                    const time = r.reminderTime.substring(0, 5);
                     if (!groups[time]) groups[time] = [];
                     groups[time].push(r);
                 });
@@ -1498,7 +1507,7 @@
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const time = btn.dataset.time;
-                    const count = reminders.filter(r => r.reminderTime.substring(0,5) === time).length;
+                    const count = reminders.filter(r => r.reminderTime.substring(0, 5) === time).length;
                     takeAllSubtitle.innerText = `Отметить ${count} лекарств на ${time}`;
                     currentGroupTime = time;
                     takeAllSheet.style.display = 'flex';
@@ -1581,10 +1590,16 @@
 
         saveCreateMed.addEventListener('click', () => {
             const name = medNameInput.value.trim();
-            if (!name) { alert('Введите название'); return; }
+            if (!name) {
+                alert('Введите название');
+                return;
+            }
             const dose = medDoseInput.value.trim() || '1 таб.';
             const time = medTimeInput.value;
-            if (!time) { alert('Выберите время'); return; }
+            if (!time) {
+                alert('Выберите время');
+                return;
+            }
             const food = medFoodSelect.value;
             createMedicineAndReminder(name, dose, time, food);
             closeCreateSheet();
@@ -1628,24 +1643,29 @@
         });
 
         let startY = 0, currentY = 0;
-        detailSheet.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; }, { passive: true });
+        detailSheet.addEventListener('touchstart', (e) => {
+            startY = e.touches[0].clientY;
+        }, {passive: true});
         detailSheet.addEventListener('touchmove', (e) => {
             currentY = e.touches[0].clientY;
             const diff = currentY - startY;
             if (diff > 0) detailSheet.style.transform = `translateY(${diff}px)`;
-        }, { passive: true });
+        }, {passive: true});
         detailSheet.addEventListener('touchend', () => {
             if (currentY - startY > 80) sheetOverlay.style.display = 'none';
             detailSheet.style.transform = '';
-            startY = 0; currentY = 0;
+            startY = 0;
+            currentY = 0;
         });
 
         let calDate = new Date();
+
         function renderCalendar() {
-            calMonthYear.innerText = calDate.toLocaleString('ru', { month: 'long', year: 'numeric' });
+            calMonthYear.innerText = calDate.toLocaleString('ru', {month: 'long', year: 'numeric'});
             const year = calDate.getFullYear(), month = calDate.getMonth();
             const firstDay = new Date(year, month, 1);
-            let startDay = firstDay.getDay(); startDay = startDay === 0 ? 6 : startDay - 1;
+            let startDay = firstDay.getDay();
+            startDay = startDay === 0 ? 6 : startDay - 1;
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             calGrid.innerHTML = '';
             for (let i = 0; i < startDay; i++) {
@@ -1683,12 +1703,12 @@
 
         document.getElementById('calPrevMonth').addEventListener('click', (e) => {
             e.stopPropagation();
-            calDate.setMonth(calDate.getMonth()-1);
+            calDate.setMonth(calDate.getMonth() - 1);
             renderCalendar();
         });
         document.getElementById('calNextMonth').addEventListener('click', (e) => {
             e.stopPropagation();
-            calDate.setMonth(calDate.getMonth()+1);
+            calDate.setMonth(calDate.getMonth() + 1);
             renderCalendar();
         });
 
@@ -1761,7 +1781,8 @@
                     authToken = localStorage.getItem(TOKEN_KEY);
                     updateUserInfo(currentUser);
                     await loadReminders();
-                } catch (e) {}
+                } catch (e) {
+                }
             }
             if (!currentUser) {
                 await loginWithTelegram();
