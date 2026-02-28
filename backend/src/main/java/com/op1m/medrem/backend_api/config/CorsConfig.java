@@ -9,13 +9,14 @@ public class CorsConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/api/**")
+        registry.addMapping("/**")
                 .allowedOrigins(
                         "https://op1m.github.io",
-                        "http://localhost:8080",
                         "https://medicine-reminder-app-t3u9.onrender.com",
-                        "https://web.telegram.org",
-                        "https://telegram.org"
+                        "http://localhost:3000",
+                        "http://127.0.0.1:5500",
+                        "null",
+                        "file://"
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                 .allowedHeaders("*")
