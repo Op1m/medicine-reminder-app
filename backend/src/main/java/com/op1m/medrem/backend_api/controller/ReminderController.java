@@ -7,6 +7,7 @@ import com.op1m.medrem.backend_api.dto.ReminderDTO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +40,7 @@ public class ReminderController {
     }
 
     @GetMapping("/user/{userId}")
+    @Transactional(readOnly = true)
     public List<ReminderDTO> getUserReminders(@PathVariable Long userId) {
         return reminderService.getUserReminders(userId).stream().map(DTOMapper::toReminderDTO).collect(Collectors.toList());
     }
