@@ -1145,47 +1145,48 @@
         let reminders = [];
         let historyMap = new Map();
 
-        const avatarContainer = document.getElementById('avatarContainer');
-        const avatarPlaceholder = document.getElementById('avatarPlaceholder');
-        const userNameEl = document.getElementById('userName');
-        const contentDiv = document.getElementById('content');
-        const monthLabel = document.getElementById('monthLabel');
-        const weekRow = document.getElementById('weekRow');
-        const calendarPopup = document.getElementById('calendarPopup');
-        const calGrid = document.getElementById('calGrid');
-        const calMonthYear = document.getElementById('calMonthYear');
-        const takeAllSheet = document.getElementById('takeAllSheet');
-        const takeAllSubtitle = document.getElementById('takeAllSubtitle');
-        const addChoiceSheet = document.getElementById('addChoiceSheet');
-        const createMedSheet = document.getElementById('createMedSheet');
-        const userSwitchSheet = document.getElementById('userSwitchSheet');
-        const userSwitchList = document.getElementById('userSwitchList');
-        const sheetOverlay = document.getElementById('sheetOverlay');
-        const detailSheet = document.getElementById('detailSheet');
+        const $ = id => document.getElementById(id);
+        const avatarContainer = $('avatarContainer');
+        const avatarPlaceholder = $('avatarPlaceholder');
+        const userNameEl = $('userName');
+        const contentDiv = $('content');
+        const monthLabel = $('monthLabel');
+        const weekRow = $('weekRow');
+        const calendarPopup = $('calendarPopup');
+        const calGrid = $('calGrid');
+        const calMonthYear = $('calMonthYear');
+        const takeAllSheet = $('takeAllSheet');
+        const takeAllSubtitle = $('takeAllSubtitle');
+        const addChoiceSheet = $('addChoiceSheet');
+        const createMedSheet = $('createMedSheet');
+        const userSwitchSheet = $('userSwitchSheet');
+        const userSwitchList = $('userSwitchList');
+        const sheetOverlay = $('sheetOverlay');
+        const detailSheet = $('detailSheet');
 
-        const medNameInput = document.getElementById('medName');
-        const medDoseInput = document.getElementById('medDose');
-        const medTimeInput = document.getElementById('medTime');
-        const medFoodSelect = document.getElementById('medFood');
-        const saveCreateMed = document.getElementById('saveCreateMed');
-        const cancelCreateMed = document.getElementById('cancelCreateMed');
-        const closeCreateMed = document.getElementById('closeCreateMed');
-        const infoCreateMed = document.getElementById('infoCreateMed');
+        const medNameInput = $('medName');
+        const medDoseInput = $('medDose');
+        const medTimeInput = $('medTime');
+        const medFoodSelect = $('medFood');
+        const saveCreateMed = $('saveCreateMed');
+        const cancelCreateMed = $('cancelCreateMed');
+        const closeCreateMed = $('closeCreateMed');
+        const infoCreateMed = $('infoCreateMed');
 
-        const sheetName = document.getElementById('sheetName');
-        const sheetSub = document.getElementById('sheetSub');
-        const sheetProgressText = document.getElementById('sheetProgressText');
-        const sheetProgressFill = document.getElementById('sheetProgressFill');
-        const sheetDose = document.getElementById('sheetDose');
-        const sheetDay = document.getElementById('sheetDay');
-        const sheetWhen = document.getElementById('sheetWhen');
-        const skipBtn = document.getElementById('skipBtn');
-        const takeBtn = document.getElementById('takeBtn');
-        const deleteBtn = document.getElementById('deleteBtn');
-        const postponeBtn = document.getElementById('postponeBtn');
-        const editMed = document.getElementById('editMed');
-        const btnBack = document.getElementById('btnBack');
-        const btnInfo = document.getElementById('btnInfo');
+        const sheetName = $('sheetName');
+        const sheetSub = $('sheetSub');
+        const sheetProgressText = $('sheetProgressText');
+        const sheetProgressFill = $('sheetProgressFill');
+        const sheetDose = $('sheetDose');
+        const sheetDay = $('sheetDay');
+        const sheetWhen = $('sheetWhen');
+        const skipBtn = $('skipBtn');
+        const takeBtn = $('takeBtn');
+        const deleteBtn = $('deleteBtn');
+        const postponeBtn = $('postponeBtn');
+        const editMed = $('editMed');
+        const btnBack = $('btnBack');
+        const btnInfo = $('btnInfo');
 
         let selectedReminderId = null;
         let selectedReminder = null;
@@ -1194,8 +1195,32 @@
         let selectedDay = new Date();
         let collapsedGroups = [];
 
+        function safeJSONParse(str) {
+            try { return JSON.parse(str); } catch (e) { return null; }
+        }
+
+        async function apiFetch(endpoint, options = {}) {
+            const headers = {
+                'Content-Type': 'application/json',
+                ...(options.headers || {})
+            };
+            if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
+            const fetchOptions = { ...options, headers };
+
+            const res = await fetch(API_BASE + endpoint, fetchOptions);
+            if (!res.ok) {
+                let err = {};
+                try { err = await res.json(); } catch (e) { /* ignore */ }
+                throw new Error(err.message || `HTTP ${res.status}`);
+            }
+            if (res.status === 204) return {};
+            try { return await res.json(); } catch (e) { return {}; }
+        }
+
         function setAvatar(user) {
-            if (user.photoUrl) {
+            if (!avatarContainer || !avatarPlaceholder) return;
+            if (user && user.photoUrl) {
                 avatarContainer.style.backgroundImage = `url(${user.photoUrl})`;
                 avatarContainer.style.backgroundSize = 'cover';
                 avatarPlaceholder.style.display = 'none';
@@ -1206,70 +1231,51 @@
         }
 
         function updateUserInfo(user) {
-            userNameEl.innerText = user.firstName || user.username || 'Пользователь';
-            setAvatar(user);
-        }
-
-        async function apiFetch(endpoint, options = {}) {
-            const headers = {
-                'Content-Type': 'application/json',
-                ...(options.headers || {}),
-            };
-            if (authToken) {
-                headers['Authorization'] = `Bearer ${authToken}`;
-            }
-
-            const fetchOptions = {
-                ...options,
-                headers,
-            };
-
-            const res = await fetch(API_BASE + endpoint, fetchOptions);
-            if (!res.ok) {
-                let errBody = {};
-                try { errBody = await res.json(); } catch (e) { /* noop */ }
-                throw new Error(errBody.message || `HTTP ${res.status}`);
-            }
-            if (res.status === 204) return {};
-            return res.json();
+            if (!userNameEl) return;
+            userNameEl.innerText = user?.firstName || user?.username || 'Пользователь';
+            setAvatar(user || {});
         }
 
         async function loginWithTelegram() {
             const tg = window.Telegram?.WebApp;
             if (!tg || !tg.initData) {
+                console.log('Telegram WebApp not found — falling back to test user');
                 currentUser = { id: 1, firstName: 'Тест', lastName: '', username: 'test', photoUrl: null };
                 authToken = 'fake-token';
                 localStorage.setItem(TOKEN_KEY, authToken);
                 localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
                 updateUserInfo(currentUser);
-                await loadReminders();
+                await loadReminders().catch(e => console.error(e));
                 return;
             }
 
             try {
                 const data = await apiFetch('/auth/telegram', {
                     method: 'POST',
-                    body: JSON.stringify({ initData: tg.initData }),
+                    body: JSON.stringify({ initData: tg.initData })
                 });
                 authToken = data.token;
                 currentUser = data.user;
-                console.log('User from server:', data.user);
                 localStorage.setItem(TOKEN_KEY, authToken);
                 localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
                 updateUserInfo(currentUser);
                 await loadReminders();
             } catch (err) {
-                console.error(err);
+                console.error('loginWithTelegram error', err);
                 currentUser = { id: 1, firstName: 'Ошибка', lastName: '', username: 'error', photoUrl: null };
                 updateUserInfo(currentUser);
             }
         }
 
         async function loadReminders() {
-            if (!currentUser) return;
+            if (!currentUser) {
+                console.warn('loadReminders: currentUser is null');
+                return;
+            }
             try {
+                console.log('GET /reminders/user/' + currentUser.id);
                 const data = await apiFetch(`/reminders/user/${currentUser.id}`);
-                reminders = data;
+                reminders = Array.isArray(data) ? data : [];
                 console.log('Загружены напоминания:', reminders);
                 await loadHistoryForDate(selectedDay);
             } catch (err) {
@@ -1279,18 +1285,16 @@
 
         async function loadHistoryForDate(date) {
             if (!currentUser) return;
-            const start = new Date(date);
-            start.setHours(0,0,0,0);
-            const end = new Date(date);
-            end.setHours(23,59,59,999);
-
+            const start = new Date(date); start.setHours(0,0,0,0);
+            const end = new Date(date); end.setHours(23,59,59,999);
             const startISO = start.toISOString();
             const endISO = end.toISOString();
 
             try {
+                console.log(`GET /medicine-history/user/${currentUser.id}/period?start=${startISO}&end=${endISO}`);
                 const history = await apiFetch(`/medicine-history/user/${currentUser.id}/period?start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}`);
                 const dateKey = date.toISOString().split('T')[0];
-                historyMap.set(dateKey, history);
+                historyMap.set(dateKey, Array.isArray(history) ? history : []);
                 console.log(`История на ${dateKey}:`, history);
                 renderGroupsForDate(date);
             } catch (err) {
@@ -1303,42 +1307,41 @@
             const dayOfWeek = date.getDay() === 0 ? 7 : date.getDay();
             return reminders.filter(r => {
                 const days = r.daysOfWeek;
+                if (!days) return false;
                 if (days === 'everyday') return true;
-                return days.split(',').map(d => parseInt(d)).includes(dayOfWeek);
+                return String(days).split(',').map(x => parseInt(x)).includes(dayOfWeek);
             });
         }
 
         function getStatusForReminderOnDate(reminder, date) {
             const dateKey = date.toISOString().split('T')[0];
             const history = historyMap.get(dateKey) || [];
-            const entry = history.find(h => h.reminder.id === reminder.id);
-            if (entry) {
-                return entry.status.toLowerCase();
-            }
+            const entry = history.find(h => h.reminder && h.reminder.id === reminder.id);
+            if (entry && entry.status) return String(entry.status).toLowerCase();
             return 'pending';
         }
 
         function renderGroupsForDate(date) {
+            if (!contentDiv) return;
             const filtered = remindersForDate(date);
             console.log(`Отображаем ${filtered.length} напоминаний на ${date.toDateString()}`);
+
             if (filtered.length === 0) {
                 contentDiv.innerHTML = `
-                    <div class="empty-state">
-                        <svg viewBox="0 0 470 470">
-                            <path d="M341 204.29h-57.26c-1.36 0-2.5-1.14-2.5-2.5v-57.26c0-9.65-7.85-17.5-17.5-17.5h-57.47c-9.65 0-17.5 7.85-17.5 17.5v57.26c0 1.36-1.14 2.5-2.5 2.5H129c-9.65 0-17.5 7.85-17.5 17.5v57.47c0 9.65 7.85 17.5 17.5 17.5h57.26c1.36 0 2.5 1.14 2.5 2.5v57.26c0 9.65 7.85 17.5 17.5 17.5h57.47c9.65 0 17.5-7.85 17.5-17.5v-19.26c0-4.14-3.36-7.5-7.5-7.5s-7.5 3.36-7.5 7.5v19.26c0 1.36-1.14 2.5-2.5 2.5h-57.47c-1.36 0-2.5-1.14-2.5-2.5v-57.26c0-9.65-7.85-17.5-17.5-17.5H129c-1.36 0-2.5-1.14-2.5-2.5v-57.47c0-1.36 1.14-2.5 2.5-2.5h57.26c9.65 0 17.5-7.85 17.5-17.5v-57.26c0-1.36 1.14-2.5 2.5-2.5h57.47c1.36 0 2.5 1.14 2.5 2.5v57.26c0 9.65 7.85 17.5 17.5 17.5H341c1.36 0 2.5 1.14 2.5 2.5v57.47c0 1.36-1.14 2.5-2.5 2.5h-57.26c-9.65 0-17.5 7.85-17.5 17.5v8c0 4.14 3.36 7.5 7.5 7.5s7.5-3.36 7.5-7.5v-8c0-1.36 1.14-2.5 2.5-2.5H341c9.65 0 17.5-7.85 17.5-17.5v-57.47c0-9.65-7.85-17.5-17.5-17.5zM433.5 68.76H299.43V51.04c0-15.88-12.92-28.8-28.8-28.8h-71.25c-15.88 0-28.8 12.92-28.8 28.8l0 17.73H36.5c-20.13 0-36.5 16.37-36.5 36.5v290.53c0 20.13 16.37 36.5 36.5 36.5h36v7.97c0 4.14 3.36 7.5 7.5 7.5s7.5-3.36 7.5-7.5v-7.97h295v7.97c0 4.14 3.36 7.5 7.5 7.5s7.5-3.36 7.5-7.5v-7.97h36c20.13 0 36.5-16.37 36.5-36.5V105.26c0-20.12-16.37-36.5-36.5-36.5zM185.57 51.04c0-7.61 6.19-13.8 13.8-13.8h71.25c7.61 0 13.8 6.19 13.8 13.8v17.73h-98.85V51.04zM455 395.79c0 11.85-9.65 21.5-21.5 21.5h-397c-11.85 0-21.5-9.65-21.5-21.5V105.26c0-11.85 9.65-21.5 21.5-21.5h397c11.85 0 21.5 9.65 21.5 21.5V395.79zM80 63.76h30.62c4.14 0 7.5-3.36 7.5-7.5s-3.36-7.5-7.5-7.5H80c-4.14 0-7.5 3.36-7.5 7.5S75.86 63.76 80 63.76zM359.38 63.76H390c4.14 0 7.5-3.36 7.5-7.5s-3.36-7.5-7.5-7.5h-30.62c-4.14 0-7.5 3.36-7.5 7.5S355.24 63.76 359.38 63.76z"/>
-                        </svg>
-                        <p>На этот день нет запланированных препаратов.</p>
-                    </div>
-                `;
+                <div class="empty-state">
+                    <p>На этот день нет запланированных препаратов.</p>
+                </div>
+            `;
                 return;
             }
 
             const groups = {};
             filtered.forEach(r => {
-                const time = r.reminderTime.substring(0,5);
+                const time = (r.reminderTime || '').substring(0,5) || '00:00';
                 if (!groups[time]) groups[time] = [];
                 groups[time].push(r);
             });
+
             const sortedTimes = Object.keys(groups).sort();
 
             contentDiv.innerHTML = '';
@@ -1351,12 +1354,12 @@
                 const header = document.createElement('div');
                 header.className = 'group-header';
                 header.innerHTML = `
-                    <div class="group-header-left">
-                        <span class="group-time">${time}</span>
-                        <span class="group-arrow"><svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg></span>
-                    </div>
-                    <button class="btn-outline take-all" data-time="${time}">Принять все</button>
-                `;
+                <div class="group-header-left">
+                    <span class="group-time">${time}</span>
+                    <span class="group-arrow">▾</span>
+                </div>
+                <button class="btn-outline take-all" data-time="${time}">Принять все</button>
+            `;
                 header.addEventListener('click', (e) => {
                     if (e.target.tagName === 'BUTTON') return;
                     groupDiv.classList.toggle('collapsed');
@@ -1376,30 +1379,22 @@
                     card.className = `med-card ${status}`;
                     card.dataset.id = r.id;
 
+                    const med = r.medicine || (r.medicineId ? { id: r.medicineId, name: 'Препарат #' + r.medicineId, dosage: '', instructions: '' } : { name: 'Неизвестно', dosage: '', instructions: '' });
+
                     let statusHtml = '';
-                    if (status === 'taken') {
-                        statusHtml = `<span class="status-taken status-icon"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none"><path d="M20 6L9 17L4 12"/></svg> Принято</span>`;
-                    } else if (status === 'missed') {
-                        statusHtml = `<span class="status-missed status-icon"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none"><path d="M18 6L6 18M6 6l12 12"/></svg> Пропущено</span>`;
-                    } else {
-                        statusHtml = `<span class="status-pending status-icon"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg> Ожидается</span>`;
-                    }
+                    if (status === 'taken') statusHtml = `<span class="status-taken">Принято</span>`;
+                    else if (status === 'missed') statusHtml = `<span class="status-missed">Пропущено</span>`;
+                    else statusHtml = `<span class="status-pending">Ожидается</span>`;
 
                     card.innerHTML = `
-                        <div class="med-icon">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M2.6 6c.329-.728.792-1.411 1.391-2.009 2.654-2.655 6.957-2.655 9.611 0l6.408 6.407c1.019 1.02 1.647 2.283 1.883 3.602M2.107 10c.236 1.319.864 2.582 1.884 3.602l6.407 6.407c2.654 2.654 6.957 2.654 9.612 0 .598-.598 1.062-1.28 1.39-2.009M16.806 7.194s-.541 2.806-3.674 5.939-5.938 3.673-5.938 3.673"/>
-                            </svg>
-                        </div>
-                        <div class="med-info">
-                            <div class="med-name">${r.medicine.name}</div>
-                            <div class="med-desc">
-                                <svg viewBox="0 0 24 24"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/><path d="M12 7v5l3 2"/></svg>
-                                ${r.medicine.dosage} · ${r.medicine.instructions || 'не указано'}
-                            </div>
-                            <div class="med-status">${statusHtml}</div>
-                        </div>
-                    `;
+                    <div class="med-icon">💊</div>
+                    <div class="med-info">
+                        <div class="med-name">${escapeHtml(med.name)}</div>
+                        <div class="med-desc">${escapeHtml(med.dosage || '')} · ${escapeHtml(med.instructions || 'не указано')}</div>
+                        <div class="med-status">${statusHtml}</div>
+                    </div>
+                `;
+
                     card.addEventListener('click', () => openDetailSheet(r.id));
                     cardsDiv.appendChild(card);
                 });
@@ -1419,12 +1414,17 @@
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const time = btn.dataset.time;
-                    const count = filtered.filter(r => r.reminderTime.substring(0,5) === time).length;
-                    takeAllSubtitle.innerText = `Отметить ${count} лекарств на ${time}`;
+                    const count = filtered.filter(r => (r.reminderTime||'').substring(0,5) === time).length;
+                    if (takeAllSubtitle) takeAllSubtitle.innerText = `Отметить ${count} лекарств на ${time}`;
                     currentGroupTime = time;
-                    takeAllSheet.style.display = 'flex';
+                    if (takeAllSheet) takeAllSheet.style.display = 'flex';
                 });
             });
+        }
+
+        function escapeHtml(str) {
+            if (typeof str !== 'string') return str || '';
+            return str.replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
         }
 
         function openDetailSheet(reminderId) {
@@ -1433,22 +1433,209 @@
             selectedReminderId = reminderId;
             selectedReminder = reminder;
 
-            sheetName.innerText = reminder.medicine.name;
-            sheetDose.innerText = `Дозировка: ${reminder.medicine.dosage || '—'}`;
-            sheetWhen.innerText = reminder.medicine.instructions || 'Не указано';
-            sheetDay.innerText = 'Сегодня';
-            sheetSub.innerText = `Последний приём: —\nПринимают: ${currentUser.firstName || 'Вы'}`;
-            sheetProgressText.innerText = '0/14 дней принято';
-            sheetProgressFill.style.width = '0%';
-            sheetOverlay.style.display = 'flex';
+            const med = reminder.medicine || (reminder.medicineId ? { name: 'Препарат #' + reminder.medicineId, dosage:'', instructions:'' } : { name:'Неизвестно', dosage:'', instructions:'' });
+
+            if (sheetName) sheetName.innerText = med.name;
+            if (sheetDose) sheetDose.innerText = `Дозировка: ${med.dosage || '—'}`;
+            if (sheetWhen) sheetWhen.innerText = med.instructions || 'Не указано';
+            if (sheetDay) sheetDay.innerText = 'Сегодня';
+            if (sheetSub) sheetSub.innerText = `Последний приём: —\nПринимают: ${currentUser?.firstName || 'Вы'}`;
+            if (sheetProgressText) sheetProgressText.innerText = '0/14 дней принято';
+            if (sheetProgressFill) sheetProgressFill.style.width = '0%';
+            if (sheetOverlay) sheetOverlay.style.display = 'flex';
         }
 
-        function onDateSelected(date) {
-            selectedDay = date;
-            loadHistoryForDate(date).then(() => {
-                renderWeek(currentDate);
-            });
+        async function createMedicineAndReminder(name, dosage, time, food) {
+            if (!currentUser) return;
+            try {
+                const medicine = await apiFetch('/medicines', {
+                    method: 'POST',
+                    body: JSON.stringify({ name, dosage, description: '', instructions: food }),
+                });
+                const reminder = await apiFetch('/reminders', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        medicineId: medicine.id,
+                        reminderTime: time,
+                        daysOfWeek: 'everyday'
+                    }),
+                });
+                reminders.push(reminder);
+                console.log('Создано напоминание:', reminder);
+                await loadHistoryForDate(selectedDay);
+            } catch (err) {
+                console.error('createMedicineAndReminder', err);
+                alert('Не удалось создать препарат');
+            }
         }
+
+        async function markReminderAsTaken(reminderId) {
+            try {
+                const reminder = reminders.find(r => r.id === reminderId);
+                if (!reminder) return;
+                const now = new Date();
+                const [hour = 0, minute = 0] = (reminder.reminderTime || '00:00').split(':').map(Number);
+                const scheduledTime = new Date(now);
+                scheduledTime.setHours(hour, minute, 0, 0);
+                const scheduledISO = scheduledTime.toISOString();
+
+                console.log('Отметка принятия:', { reminderId, scheduledISO });
+
+                const history = await apiFetch('/medicine-history/schedule', {
+                    method: 'POST',
+                    body: JSON.stringify({ reminderId, scheduledTime: scheduledISO })
+                });
+                await apiFetch(`/medicine-history/${history.id}/mark-taken`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ notes: '' })
+                });
+                console.log('Статус принят');
+                await loadHistoryForDate(selectedDay);
+            } catch (err) {
+                console.error('Ошибка отметки принятия:', err);
+                throw err;
+            }
+        }
+
+        async function markReminderAsSkipped(reminderId) {
+            try {
+                const reminder = reminders.find(r => r.id === reminderId);
+                if (!reminder) return;
+                const now = new Date();
+                const [hour = 0, minute = 0] = (reminder.reminderTime || '00:00').split(':').map(Number);
+                const scheduledTime = new Date(now);
+                scheduledTime.setHours(hour, minute, 0, 0);
+                const scheduledISO = scheduledTime.toISOString();
+
+                console.log('Отметка пропуска:', { reminderId, scheduledISO });
+
+                const history = await apiFetch('/medicine-history/schedule', {
+                    method: 'POST',
+                    body: JSON.stringify({ reminderId, scheduledTime: scheduledISO })
+                });
+                await apiFetch(`/medicine-history/${history.id}/mark-skipped`, { method: 'PATCH' });
+                console.log('Статус пропущен');
+                await loadHistoryForDate(selectedDay);
+            } catch (err) {
+                console.error('Ошибка отметки пропуска:', err);
+            }
+        }
+
+        async function deleteReminder(reminderId) {
+            try {
+                await apiFetch(`/reminders/${reminderId}`, { method: 'DELETE' });
+                reminders = reminders.filter(r => r.id !== reminderId);
+                console.log('Напоминание удалено');
+                await loadHistoryForDate(selectedDay);
+            } catch (err) {
+                console.error('deleteReminder', err);
+            }
+        }
+
+        takeBtn?.addEventListener('click', async () => {
+            if (selectedReminderId) {
+                try {
+                    await markReminderAsTaken(selectedReminderId);
+                    await loadHistoryForDate(selectedDay);
+                    if (sheetOverlay) sheetOverlay.style.display = 'none';
+                } catch (err) {
+                    console.error(err);
+                    alert('Не удалось отметить приём. Посмотрите консоль.');
+                }
+            }
+        });
+
+        skipBtn?.addEventListener('click', () => {
+            if (selectedReminderId) {
+                markReminderAsSkipped(selectedReminderId);
+                if (sheetOverlay) sheetOverlay.style.display = 'none';
+            }
+        });
+
+        deleteBtn?.addEventListener('click', () => {
+            if (selectedReminderId && confirm('Удалить этот препарат?')) {
+                deleteReminder(selectedReminderId);
+                if (sheetOverlay) sheetOverlay.style.display = 'none';
+            }
+        });
+
+        postponeBtn?.addEventListener('click', () => alert('Отложено на 15 мин (заглушка)'));
+        editMed?.addEventListener('click', () => alert('Редактирование (заглушка)'));
+        btnBack?.addEventListener('click', () => { if (sheetOverlay) sheetOverlay.style.display = 'none'; });
+        btnInfo?.addEventListener('click', () => alert('Информация о препарате'));
+
+        sheetOverlay?.addEventListener('click', (e) => { if (e.target === sheetOverlay) sheetOverlay.style.display = 'none'; });
+
+        (function addSheetTouch() {
+            if (!detailSheet) return;
+            let startY = 0, currentY = 0;
+            detailSheet.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; }, { passive: true });
+            detailSheet.addEventListener('touchmove', (e) => {
+                currentY = e.touches[0].clientY;
+                const diff = currentY - startY;
+                if (diff > 0) detailSheet.style.transform = `translateY(${diff}px)`;
+            }, { passive: true });
+            detailSheet.addEventListener('touchend', () => {
+                if (currentY - startY > 80) { if (sheetOverlay) sheetOverlay.style.display = 'none'; }
+                detailSheet.style.transform = '';
+                startY = currentY = 0;
+            });
+        })();
+
+        $('takeAllConfirm')?.addEventListener('click', async () => {
+            if (currentGroupTime) {
+                const groupReminders = remindersForDate(selectedDay).filter(r => (r.reminderTime||'').substring(0,5) === currentGroupTime);
+                for (const r of groupReminders) await markReminderAsTaken(r.id);
+                await loadHistoryForDate(selectedDay);
+            }
+            if (takeAllSheet) takeAllSheet.style.display = 'none';
+        });
+
+        $('skipAllConfirm')?.addEventListener('click', async () => {
+            if (currentGroupTime) {
+                const groupReminders = remindersForDate(selectedDay).filter(r => (r.reminderTime||'').substring(0,5) === currentGroupTime);
+                for (const r of groupReminders) await markReminderAsSkipped(r.id);
+                await loadHistoryForDate(selectedDay);
+            }
+            if (takeAllSheet) takeAllSheet.style.display = 'none';
+        });
+
+        $('postponeAllConfirm')?.addEventListener('click', () => {
+            alert('Функция отложить всё пока не реализована');
+            if (takeAllSheet) takeAllSheet.style.display = 'none';
+        });
+        $('cancelTakeAll')?.addEventListener('click', () => { if (takeAllSheet) takeAllSheet.style.display = 'none'; });
+
+        $('plusBtn')?.addEventListener('click', () => { if (addChoiceSheet) addChoiceSheet.style.display = 'flex'; });
+        $('chooseNewMed')?.addEventListener('click', () => { if (addChoiceSheet) addChoiceSheet.style.display = 'none'; openCreateSheet(); });
+        $('chooseNewCourse')?.addEventListener('click', () => { if (addChoiceSheet) addChoiceSheet.style.display = 'none'; alert('Добавление курса (заглушка)'); });
+        $('cancelAddChoice')?.addEventListener('click', () => { if (addChoiceSheet) addChoiceSheet.style.display = 'none'; });
+        addChoiceSheet?.addEventListener('click', (e) => { if (e.target === addChoiceSheet) addChoiceSheet.style.display = 'none'; });
+
+        function openCreateSheet() {
+            if (medNameInput) medNameInput.value = 'Новый препарат';
+            if (medDoseInput) medDoseInput.value = '1 таб.';
+            if (medTimeInput) medTimeInput.value = '08:30';
+            if (medFoodSelect) medFoodSelect.value = 'во время еды';
+            if (createMedSheet) createMedSheet.style.display = 'flex';
+        }
+        function closeCreateSheet() { if (createMedSheet) createMedSheet.style.display = 'none'; }
+
+        saveCreateMed?.addEventListener('click', () => {
+            const name = medNameInput?.value?.trim();
+            if (!name) { alert('Введите название'); return; }
+            const dose = medDoseInput?.value?.trim() || '1 таб.';
+            const time = medTimeInput?.value;
+            if (!time) { alert('Выберите время'); return; }
+            const food = medFoodSelect?.value;
+            createMedicineAndReminder(name, dose, time, food);
+            closeCreateSheet();
+        });
+        cancelCreateMed?.addEventListener('click', closeCreateSheet);
+        closeCreateMed?.addEventListener('click', closeCreateSheet);
+        infoCreateMed?.addEventListener('click', () => alert('Заполните поля и нажмите Создать'));
+        createMedSheet?.addEventListener('click', (e) => { if (e.target === createMedSheet) closeCreateSheet(); });
 
         function getWeekDays(date) {
             const d = new Date(date);
@@ -1458,14 +1645,15 @@
             monday.setDate(d.getDate() + diff);
             const week = [];
             for (let i = 0; i < 7; i++) {
-                const day = new Date(monday);
-                day.setDate(monday.getDate() + i);
-                week.push(day);
+                const D = new Date(monday);
+                D.setDate(monday.getDate() + i);
+                week.push(D);
             }
             return week;
         }
 
         function renderWeek(centerDate) {
+            if (!weekRow) return;
             const week = getWeekDays(centerDate);
             weekRow.innerHTML = '';
             const today = new Date();
@@ -1482,10 +1670,13 @@
                 });
                 weekRow.appendChild(chip);
             });
-            monthLabel.childNodes[0].nodeValue = centerDate.toLocaleString('ru', { month: 'long', year: 'numeric' }).replace(' г.', '') + ' ';
+            if (monthLabel) monthLabel.childNodes[0].nodeValue = centerDate.toLocaleString('ru', { month: 'long', year: 'numeric' }).replace(' г.', '') + ' ';
         }
 
+        let calDate = new Date();
+
         function renderCalendar() {
+            if (!calGrid || !calMonthYear) return;
             calMonthYear.innerText = calDate.toLocaleString('ru', { month: 'long', year: 'numeric' });
             const year = calDate.getFullYear(), month = calDate.getMonth();
             const firstDay = new Date(year, month, 1);
@@ -1493,9 +1684,7 @@
             startDay = startDay === 0 ? 6 : startDay - 1;
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             calGrid.innerHTML = '';
-            for (let i = 0; i < startDay; i++) {
-                calGrid.appendChild(document.createElement('div')).className = 'cal-cell empty';
-            }
+            for (let i = 0; i < startDay; i++) calGrid.appendChild(document.createElement('div')).className = 'cal-cell empty';
             const today = new Date();
             for (let d = 1; d <= daysInMonth; d++) {
                 const cell = document.createElement('div');
@@ -1508,345 +1697,92 @@
                     document.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('selected'));
                     cell.classList.add('selected');
                     onDateSelected(new Date(year, month, d));
-                    calendarPopup.style.display = 'none';
+                    if (calendarPopup) calendarPopup.style.display = 'none';
                 });
                 calGrid.appendChild(cell);
             }
         }
 
-        let calDate = new Date();
-
-        document.getElementById('takeAllConfirm').addEventListener('click', async () => {
-            if (currentGroupTime) {
-                const groupReminders = remindersForDate(selectedDay).filter(r => r.reminderTime.substring(0,5) === currentGroupTime);
-                for (const r of groupReminders) {
-                    await markReminderAsTaken(r.id);
-                }
-                await loadHistoryForDate(selectedDay);
-            }
-            takeAllSheet.style.display = 'none';
-        });
-
-        document.getElementById('skipAllConfirm').addEventListener('click', async () => {
-            if (currentGroupTime) {
-                const groupReminders = remindersForDate(selectedDay).filter(r => r.reminderTime.substring(0,5) === currentGroupTime);
-                for (const r of groupReminders) {
-                    await markReminderAsSkipped(r.id);
-                }
-                await loadHistoryForDate(selectedDay);
-            }
-            takeAllSheet.style.display = 'none';
-        });
-
-        document.getElementById('postponeAllConfirm').addEventListener('click', () => {
-            alert('Функция отложить всё пока не реализована');
-            takeAllSheet.style.display = 'none';
-        });
-
-        document.getElementById('cancelTakeAll').addEventListener('click', () => {
-            takeAllSheet.style.display = 'none';
-        });
-
-        document.getElementById('plusBtn').addEventListener('click', () => {
-            addChoiceSheet.style.display = 'flex';
-        });
-
-        document.getElementById('chooseNewMed').addEventListener('click', () => {
-            addChoiceSheet.style.display = 'none';
-            openCreateSheet();
-        });
-
-        document.getElementById('chooseNewCourse').addEventListener('click', () => {
-            addChoiceSheet.style.display = 'none';
-            alert('Добавление курса (заглушка)');
-        });
-
-        document.getElementById('cancelAddChoice').addEventListener('click', () => {
-            addChoiceSheet.style.display = 'none';
-        });
-
-        addChoiceSheet.addEventListener('click', (e) => {
-            if (e.target === addChoiceSheet) addChoiceSheet.style.display = 'none';
-        });
-
-        function openCreateSheet() {
-            medNameInput.value = 'Новый препарат';
-            medDoseInput.value = '1 таб.';
-            medTimeInput.value = '08:30';
-            medFoodSelect.value = 'во время еды';
-            createMedSheet.style.display = 'flex';
+        function onDateSelected(date) {
+            selectedDay = date;
+            loadHistoryForDate(date).then(() => { renderWeek(currentDate); });
         }
 
-        function closeCreateSheet() {
-            createMedSheet.style.display = 'none';
-        }
+        $('prevWeek')?.addEventListener('click', () => { currentDate.setDate(currentDate.getDate() - 7); renderWeek(currentDate); });
+        $('nextWeek')?.addEventListener('click', () => { currentDate.setDate(currentDate.getDate() + 7); renderWeek(currentDate); });
 
-        saveCreateMed.addEventListener('click', () => {
-            const name = medNameInput.value.trim();
-            if (!name) { alert('Введите название'); return; }
-            const dose = medDoseInput.value.trim() || '1 таб.';
-            const time = medTimeInput.value;
-            if (!time) { alert('Выберите время'); return; }
-            const food = medFoodSelect.value;
-            createMedicineAndReminder(name, dose, time, food);
-            closeCreateSheet();
-        });
-
-        cancelCreateMed.addEventListener('click', closeCreateSheet);
-        closeCreateMed.addEventListener('click', closeCreateSheet);
-        infoCreateMed.addEventListener('click', () => alert('Заполните поля и нажмите Создать'));
-        createMedSheet.addEventListener('click', (e) => {
-            if (e.target === createMedSheet) closeCreateSheet();
-        });
-
-        async function createMedicineAndReminder(name, dosage, time, food) {
-            if (!currentUser) return;
-            try {
-                const medicine = await apiFetch('/medicines', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        name,
-                        dosage,
-                        description: '',
-                        instructions: food,
-                    }),
-                });
-                const reminder = await apiFetch('/reminders', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        userId: currentUser.id,
-                        medicineId: medicine.id,
-                        reminderTime: time,
-                        daysOfWeek: 'everyday',
-                    }),
-                });
-                reminders.push(reminder);
-                console.log('Создано напоминание:', reminder);
-                await loadHistoryForDate(selectedDay);
-            } catch (err) {
-                console.error(err);
-                alert('Не удалось создать препарат');
-            }
-        }
-
-        async function markReminderAsTaken(reminderId) {
-            try {
-                const reminder = reminders.find(r => r.id === reminderId);
-                if (!reminder) return;
-                const now = new Date();
-                const [hour, minute] = reminder.reminderTime.split(':').map(Number);
-                const scheduledTime = new Date(now);
-                scheduledTime.setHours(hour, minute, 0, 0);
-                const scheduledISO = scheduledTime.toISOString();
-
-                console.log('Отметка принятия:', { reminderId, scheduledISO });
-
-                const history = await apiFetch('/medicine-history/schedule', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        reminderId,
-                        scheduledTime: scheduledISO,
-                    }),
-                });
-                console.log('История создана:', history);
-                await apiFetch(`/medicine-history/${history.id}/mark-taken`, {
-                    method: 'PATCH',
-                    body: JSON.stringify({ notes: '' }),
-                });
-                console.log('Статус принят');
-                await loadHistoryForDate(selectedDay);
-            } catch (err) {
-                console.error('Ошибка отметки принятия:', err);
-            }
-        }
-
-        async function markReminderAsSkipped(reminderId) {
-            try {
-                const reminder = reminders.find(r => r.id === reminderId);
-                if (!reminder) return;
-                const now = new Date();
-                const [hour, minute] = reminder.reminderTime.split(':').map(Number);
-                const scheduledTime = new Date(now);
-                scheduledTime.setHours(hour, minute, 0, 0);
-                const scheduledISO = scheduledTime.toISOString();
-
-                console.log('Отметка пропуска:', { reminderId, scheduledISO });
-
-                const history = await apiFetch('/medicine-history/schedule', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        reminderId,
-                        scheduledTime: scheduledISO,
-                    }),
-                });
-                console.log('История создана:', history);
-                await apiFetch(`/medicine-history/${history.id}/mark-skipped`, {
-                    method: 'PATCH',
-                });
-                console.log('Статус пропущен');
-                await loadHistoryForDate(selectedDay);
-            } catch (err) {
-                console.error('Ошибка отметки пропуска:', err);
-            }
-        }
-
-        async function deleteReminder(reminderId) {
-            try {
-                await apiFetch(`/reminders/${reminderId}`, { method: 'DELETE' });
-                reminders = reminders.filter(r => r.id !== reminderId);
-                console.log('Напоминание удалено');
-                await loadHistoryForDate(selectedDay);
-            } catch (err) {
-                console.error(err);
-            }
-        }
-
-        takeBtn.addEventListener('click', async () => {
-            if (selectedReminderId) {
-                try {
-                    await markReminderAsTaken(selectedReminderId);
-                    await loadHistoryForDate(selectedDay);
-                    sheetOverlay.style.display = 'none';
-                } catch (err) {
-                    console.error('Ошибка при отметке принятия:', err);
-                    alert('Не удалось отметить приём. Посмотрите консоль для деталей.');
-                }
-            }
-        });
-
-        skipBtn.addEventListener('click', () => {
-            if (selectedReminderId) {
-                markReminderAsSkipped(selectedReminderId);
-                sheetOverlay.style.display = 'none';
-            }
-        });
-
-        deleteBtn.addEventListener('click', () => {
-            if (selectedReminderId && confirm('Удалить этот препарат?')) {
-                deleteReminder(selectedReminderId);
-                sheetOverlay.style.display = 'none';
-            }
-        });
-
-        postponeBtn.addEventListener('click', () => alert('Отложено на 15 мин (заглушка)'));
-        editMed.addEventListener('click', () => alert('Редактирование (заглушка)'));
-        btnBack.addEventListener('click', () => sheetOverlay.style.display = 'none');
-        btnInfo.addEventListener('click', () => alert('Информация о препарате'));
-
-        sheetOverlay.addEventListener('click', (e) => {
-            if (e.target === sheetOverlay) sheetOverlay.style.display = 'none';
-        });
-
-        let startY = 0, currentY = 0;
-        detailSheet.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; }, { passive: true });
-        detailSheet.addEventListener('touchmove', (e) => {
-            currentY = e.touches[0].clientY;
-            const diff = currentY - startY;
-            if (diff > 0) detailSheet.style.transform = `translateY(${diff}px)`;
-        }, { passive: true });
-        detailSheet.addEventListener('touchend', () => {
-            if (currentY - startY > 80) sheetOverlay.style.display = 'none';
-            detailSheet.style.transform = '';
-            startY = 0; currentY = 0;
-        });
-
-        monthLabel.addEventListener('click', (e) => {
+        monthLabel?.addEventListener('click', (e) => {
             e.stopPropagation();
-            calendarPopup.style.display = 'block';
+            if (calendarPopup) calendarPopup.style.display = 'block';
             renderCalendar();
         });
-
         document.addEventListener('click', (e) => {
-            if (!calendarPopup.contains(e.target) && !monthLabel.contains(e.target)) calendarPopup.style.display = 'none';
+            if (calendarPopup && !calendarPopup.contains(e.target) && !monthLabel.contains(e.target)) calendarPopup.style.display = 'none';
         });
-
-        document.getElementById('calPrevMonth').addEventListener('click', (e) => {
-            e.stopPropagation();
-            calDate.setMonth(calDate.getMonth() - 1);
-            renderCalendar();
-        });
-        document.getElementById('calNextMonth').addEventListener('click', (e) => {
-            e.stopPropagation();
-            calDate.setMonth(calDate.getMonth() + 1);
-            renderCalendar();
-        });
-
-        document.getElementById('prevWeek').addEventListener('click', () => {
-            currentDate.setDate(currentDate.getDate() - 7);
-            renderWeek(currentDate);
-        });
-        document.getElementById('nextWeek').addEventListener('click', () => {
-            currentDate.setDate(currentDate.getDate() + 7);
-            renderWeek(currentDate);
-        });
-
-        function setActiveTab(tabId) {
-            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            const active = tabId.replace('nav', '').toLowerCase();
-            if (active === 'home') {
-                renderGroupsForDate(selectedDay);
-            } else if (active === 'stats') {
-                contentDiv.innerHTML = '<div style="padding:30px; text-align:center; color:#6f8fb0;">📊 Курсы (заглушка)</div>';
-            } else {
-                contentDiv.innerHTML = '<div style="padding:30px; text-align:center; color:#6f8fb0;">👤 Профиль (заглушка)</div>';
-            }
-        }
-
-        document.getElementById('navHome').addEventListener('click', () => setActiveTab('navHome'));
-        document.getElementById('navStats').addEventListener('click', () => setActiveTab('navStats'));
-        document.getElementById('navProfile').addEventListener('click', () => setActiveTab('navProfile'));
+        $('calPrevMonth')?.addEventListener('click', (e) => { e.stopPropagation(); calDate.setMonth(calDate.getMonth() - 1); renderCalendar(); });
+        $('calNextMonth')?.addEventListener('click', (e) => { e.stopPropagation(); calDate.setMonth(calDate.getMonth() + 1); renderCalendar(); });
 
         function renderUserSwitchList() {
-            if (!currentUser) return;
+            if (!currentUser || !userSwitchList) return;
             userSwitchList.innerHTML = `
-                <div class="user-list-item" data-user="current">
-                    <div class="user-avatar-small">${(currentUser.firstName?.[0] || currentUser.username?.[0] || '?').toUpperCase()}</div>
-                    <span class="user-name-small">${currentUser.firstName || currentUser.username || 'Текущий пользователь'}</span>
-                    <span style="margin-left: auto; color: #2e7aff;">✓</span>
+            <div class="user-list-item" data-user="current">
+                <div class="user-avatar-small">${(currentUser.firstName?.[0] || currentUser.username?.[0] || '?').toUpperCase()}</div>
+                <span class="user-name-small">${currentUser.firstName || currentUser.username || 'Текущий пользователь'}</span>
+                <span style="margin-left: auto; color: #2e7aff;">✓</span>
+            </div>
+            <div class="user-list-item" id="addNewUser">
+                <div class="user-avatar-small plus">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7z"/></svg>
                 </div>
-                <div class="user-list-item" id="addNewUser">
-                    <div class="user-avatar-small plus">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7z"/></svg>
-                    </div>
-                    <span class="user-name-small">Новый пользователь</span>
-                </div>
-            `;
-            document.querySelectorAll('.user-list-item[data-user]').forEach(item => {
-                item.addEventListener('click', () => {
-                    alert('Переключение на текущего пользователя (пока только один пользователь)');
-                    userSwitchSheet.style.display = 'none';
-                });
+                <span class="user-name-small">Новый пользователь</span>
+            </div>
+        `;
+            userSwitchList.querySelectorAll('.user-list-item[data-user]')?.forEach(item => {
+                item.addEventListener('click', () => { alert('Переключение (заглушка)'); if (userSwitchSheet) userSwitchSheet.style.display = 'none'; });
             });
-            document.getElementById('addNewUser').addEventListener('click', () => {
-                alert('Функция добавления нового пользователя будет доступна позже');
-                userSwitchSheet.style.display = 'none';
-            });
+            $('addNewUser')?.addEventListener('click', () => { alert('Добавление пользователя (заглушка)'); if (userSwitchSheet) userSwitchSheet.style.display = 'none'; });
         }
 
-        document.getElementById('userSwitchBtn').addEventListener('click', () => {
-            renderUserSwitchList();
-            userSwitchSheet.style.display = 'flex';
-        });
-        userSwitchSheet.addEventListener('click', (e) => {
-            if (e.target === userSwitchSheet) userSwitchSheet.style.display = 'none';
-        });
+        $('userSwitchBtn')?.addEventListener('click', () => { renderUserSwitchList(); if (userSwitchSheet) userSwitchSheet.style.display = 'flex'; });
+        userSwitchSheet?.addEventListener('click', (e) => { if (e.target === userSwitchSheet) userSwitchSheet.style.display = 'none'; });
+
+        function setActiveTab(tabId) {
+            document.querySelectorAll('.nav-item')?.forEach(item => item.classList.remove('active'));
+            $(tabId)?.classList.add('active');
+            const active = tabId.replace('nav', '').toLowerCase();
+            if (active === 'home') renderGroupsForDate(selectedDay);
+            else if (active === 'stats') contentDiv && (contentDiv.innerHTML = '<div style="padding:30px; text-align:center; color:#6f8fb0;">📊 Курсы (заглушка)</div>');
+            else contentDiv && (contentDiv.innerHTML = '<div style="padding:30px; text-align:center; color:#6f8fb0;">👤 Профиль (заглушка)</div>');
+        }
+        $('navHome')?.addEventListener('click', () => setActiveTab('navHome'));
+        $('navStats')?.addEventListener('click', () => setActiveTab('navStats'));
+        $('navProfile')?.addEventListener('click', () => setActiveTab('navProfile'));
 
         (async function init() {
+            console.log('App init start');
             const savedUser = localStorage.getItem(USER_KEY);
             if (savedUser) {
                 try {
-                    currentUser = JSON.parse(savedUser);
+                    currentUser = safeJSONParse(savedUser);
                     authToken = localStorage.getItem(TOKEN_KEY);
                     updateUserInfo(currentUser);
                     await loadReminders();
-                } catch (e) {}
+                } catch (e) { console.warn('Ошибка парсинга пользователя', e); }
             }
-            if (!currentUser) {
-                await loginWithTelegram();
-            }
+            if (!currentUser) await loginWithTelegram();
             renderWeek(new Date());
+            console.log('App initialization finished');
         })();
+
+        window.__app = {
+            loadReminders,
+            loadHistoryForDate,
+            getReminders: () => reminders,
+            getHistoryMap: () => historyMap,
+            getCurrentUser: () => currentUser,
+            apiFetch
+        };
+        console.log('Debug helpers available at window.__app');
     })();
 </script>
 </body>
