@@ -1,7 +1,6 @@
 package com.op1m.medrem.backend_api.dto;
 
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 public class UserDTO {
     private Long id;
@@ -9,20 +8,22 @@ public class UserDTO {
     private String email;
     private String firstName;
     private String lastName;
+    private String photoUrl;
     private Long telegramChatId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Boolean isActive;
 
-    public UserDTO() {}
+    public UserDTO(Long id, String username, String email, String firstName, String lastName, String photoUrl, Long telegramChatId, LocalDateTime createdAt, LocalDateTime updatedAt, Boolean active) {}
 
     public UserDTO(Long id, String username, String email, String firstName, String lastName,
-                   Long telegramChatId, LocalDateTime createdAt, LocalDateTime updatedAt, Boolean isActive) {
+                   Long telegramChatId, String photoUrl, LocalDateTime createdAt, LocalDateTime updatedAt, Boolean isActive) {
         this.id = id;
         this.username = username;
         this.email = email;
         this.firstName = firstName;
         this.lastName = lastName;
+        this.photoUrl = photoUrl;
         this.telegramChatId = telegramChatId;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -55,4 +56,7 @@ public class UserDTO {
 
     public Boolean getIsActive() { return isActive; }
     public void setIsActive(Boolean isActive) { this.isActive = isActive; }
+
+    public String getPhotoUrl() {return photoUrl;}
+    public void setPhotoUrl(String photoUrl) {}
 }

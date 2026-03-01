@@ -22,6 +22,7 @@ public class DTOMapper {
                 user.getEmail(),
                 user.getFirstName(),
                 user.getLastName(),
+                user.getPhotoUrl(),
                 user.getTelegramChatId(),
                 user.getCreatedAt(),
                 user.getUpdatedAt(),
