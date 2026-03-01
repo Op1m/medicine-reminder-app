@@ -8,7 +8,12 @@ import com.op1m.medrem.backend_api.repository.ReminderRepository;
 import com.op1m.medrem.backend_api.service.ReminderService;
 import com.op1m.medrem.backend_api.service.UserService;
 import com.op1m.medrem.backend_api.service.MedicineService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,9 +21,12 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @Service
-public class ReminderServiceImpl implements ReminderService{
+public class ReminderServiceImpl implements ReminderService {
+
+    private static final Logger logger = LoggerFactory.getLogger(ReminderServiceImpl.class);
 
     private final ReminderRepository reminderRepository;
     private final UserService userService;
@@ -37,208 +45,148 @@ public class ReminderServiceImpl implements ReminderService{
     }
 
     @Override
+    @CacheEvict(cacheNames = "remindersByUser", allEntries = true)
     public Reminder createReminder(Long userId, Long medicineId, LocalTime reminderTime, String daysOfWeek) {
-        System.out.println("⏰ ReminderService: Создание напоминания: user=" + userId + ", medicine=" + medicineId + ", time=" + reminderTime);
-
+        logger.info("Создание напоминания: user={}, medicine={}, time={}", userId, medicineId, reminderTime);
         User user = userService.findById(userId);
-
-        System.out.println("currentUser:" + user);
-        System.out.println("userId для reminder:" + user.getId());
-        System.out.println("telegramId:" + user.getTelegramChatId());
-
-        if (user == null) {
-            throw new RuntimeException("❌ ReminderService: Пользователь с ID " + userId + " не найден");
-        }
-
+        if (user == null) throw new RuntimeException("Пользователь не найден");
         Medicine medicine = medicineService.findById(medicineId);
-        if (medicine == null) {
-            throw new RuntimeException("❌ ReminderService: Лекарство с ID " + medicineId + " не найден");
-        }
-
+        if (medicine == null) throw new RuntimeException("Лекарство не найдено");
         Reminder reminder = new Reminder(user, medicine, reminderTime);
-        if (daysOfWeek != null) {
-            reminder.setDaysOfWeek(daysOfWeek);
-        }
-
+        if (daysOfWeek != null) reminder.setDaysOfWeek(daysOfWeek);
         Reminder savedReminder = reminderRepository.save(reminder);
-        System.out.println("✅ ReminderService: Напоминание создано: " + savedReminder.getId());
+        logger.info("Напоминание создано: id={}", savedReminder.getId());
         return savedReminder;
     }
 
     @Override
+    @Cacheable(cacheNames = "remindersByUser", key = "#userId")
     public List<Reminder> getUserReminders(Long userId) {
-        System.out.println("📋 ReminderService: Получение напоминаний пользователя: " + userId);
-
+        logger.debug("Получение напоминаний для user={}", userId);
         User user = userService.findById(userId);
-        if (user == null) {
-            throw new RuntimeException("❌ ReminderService: Пользователь с ID " + userId + " не найден");
-        }
-
-        System.out.println("Finding reminders for user " + user.getId() + ", user=" + user);
+        if (user == null) throw new RuntimeException("Пользователь не найден");
         List<Reminder> reminders = reminderRepository.findByUser(user);
-        System.out.println("Found " + reminders.size() + " reminders");
-        reminders.forEach(r -> System.out.println("  reminder id=" + r.getId()));
+        logger.debug("Найдено {} напоминаний", reminders.size());
         return reminders;
     }
 
     @Override
     public Reminder findById(Long reminderId) {
-        System.out.println("🔍 ReminderService: Поиск напоминания по ID: " + reminderId);
-
-        Reminder reminder = reminderRepository.findById(reminderId)
-                .orElseThrow(() -> new RuntimeException("❌ ReminderService: Напоминание с ID " + reminderId + " не найдено"));
-
-        System.out.println("✅ ReminderService: Напоминание найдено: " + reminder.getId());
-        return reminder;
+        logger.debug("Поиск напоминания id={}", reminderId);
+        return reminderRepository.findById(reminderId)
+                .orElseThrow(() -> new RuntimeException("Напоминание не найдено"));
     }
 
     @Override
+    @Cacheable(cacheNames = "remindersByUser", key = "#userId")
     public List<Reminder> getUserActiveReminders(Long userId) {
-        System.out.println("📋 ReminderService: Получение активных напоминаний пользователя: " + userId);
-
+        logger.debug("Получение активных напоминаний для user={}", userId);
         User user = userService.findById(userId);
-        if (user == null) {
-            throw new RuntimeException("❌ ReminderService: Пользователь с ID " + userId + " не найден");
-        }
-
-        List<Reminder> reminders = reminderRepository.findByUserAndIsActiveTrue(user);
-        System.out.println("✅ ReminderService: Найдено активных напоминаний: " + reminders.size());
-
-        return reminders;
+        if (user == null) throw new RuntimeException("Пользователь не найден");
+        return reminderRepository.findByUserAndIsActiveTrue(user);
     }
 
     @Override
+    @Cacheable(cacheNames = "remindersAll")
     public List<Reminder> getAllActiveReminders() {
-        System.out.println("📋 ReminderService: Получение всех активных напоминаний");
-
-        List<Reminder> reminders = reminderRepository.findByIsActiveTrue();
-        System.out.println("✅ ReminderService: Найдено активных напоминаний: " + reminders.size());
-
-        return reminders;
+        logger.debug("Получение всех активных напоминаний");
+        return reminderRepository.findByIsActiveTrue();
     }
 
     @Override
     public List<Reminder> getDueReminders() {
-        System.out.println("🔔 ReminderService: Поиск напоминаний для отправки...");
-
+        logger.debug("Поиск напоминаний для отправки");
         List<Reminder> dueReminders = new ArrayList<>();
-
         List<Reminder> activeReminders = reminderRepository.findAllActiveWithUserAndMedicine();
-
         for (Reminder reminder : activeReminders) {
-            if(shouldNotifyNow(reminder)) {
+            if (shouldNotifyNow(reminder)) {
                 dueReminders.add(reminder);
-                System.out.println("✅ ReminderService: Найдено для отправки: " + reminder.getId());
+                logger.debug("Найдено для отправки: id={}", reminder.getId());
             }
         }
-
-        System.out.println("📊 ReminderService: Итого для отправки: " + dueReminders.size());
+        logger.debug("Всего для отправки: {}", dueReminders.size());
         return dueReminders;
     }
 
     @Override
+    @CacheEvict(cacheNames = {"remindersByUser", "remindersAll"}, allEntries = true)
     public Reminder toggleReminder(Long reminderId, Boolean isActive) {
-        System.out.println("🔘 ReminderService: Изменение статуса напоминания: " + reminderId + " -> " + isActive);
-
+        logger.debug("Toggle reminder {} -> {}", reminderId, isActive);
         Reminder reminder = reminderRepository.findById(reminderId).orElse(null);
-        if(reminder == null) {
-            System.out.println("❌ ReminderService: Напоминание не найдено: " + reminderId);
-            return null;
-        }
-
+        if (reminder == null) return null;
         reminder.setActive(isActive);
-        Reminder updatedReminder = reminderRepository.save(reminder);
-        System.out.println("✅ ReminderService: Статус напоминания обновлен: " + updatedReminder.getId() + " -> " + isActive);
-        return updatedReminder;
+        Reminder updated = reminderRepository.save(reminder);
+        logger.info("Reminder {} active -> {}", updated.getId(), isActive);
+        return updated;
     }
 
     @Override
+    @CacheEvict(cacheNames = {"remindersByUser", "remindersAll"}, allEntries = true)
     public Reminder updateReminderTime(Long reminderId, LocalTime newTime) {
-        System.out.println("🕒 ReminderService: Обновление времени напоминания: " + reminderId + " -> " + newTime);
-
+        logger.debug("Update reminder time {} -> {}", reminderId, newTime);
         Reminder reminder = reminderRepository.findById(reminderId).orElse(null);
-        if (reminder == null) {
-            System.out.println("❌ ReminderService: Напоминание не найдено: " + reminderId);
-            return null;
-        }
-
+        if (reminder == null) return null;
         reminder.setReminderTime(newTime);
-        Reminder updatedReminder = reminderRepository.save(reminder);
-        System.out.println("✅ ReminderService: Время напоминания обновлено: " + updatedReminder.getId());
-        return updatedReminder;
+        Reminder updated = reminderRepository.save(reminder);
+        logger.info("Reminder {} time updated", updated.getId());
+        return updated;
     }
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = {"remindersByUser", "remindersAll"}, allEntries = true)
     public boolean deleteReminder(Long reminderId) {
-        System.out.println("🗑️ ReminderService: Удаление напоминания: " + reminderId);
-
+        logger.debug("Delete reminder {}", reminderId);
         if (!reminderRepository.existsById(reminderId)) {
-            System.out.println("❌ ReminderService: Напоминание не найдено для удаления: " + reminderId);
+            logger.warn("Reminder {} not found for deletion", reminderId);
             return false;
         }
-
         try {
             medicineHistoryRepository.deleteByReminderId(reminderId);
-            System.out.println("✅ ReminderService: Удалены связанные записи medicine_history для reminderId=" + reminderId);
+            reminderRepository.deleteById(reminderId);
+            logger.info("Reminder {} and related history deleted", reminderId);
+            return true;
         } catch (Exception e) {
-            System.err.println("Ошибка при удалении связанных записей medicine_history: " + e.getMessage());
+            logger.error("Error deleting reminder history: {}", e.getMessage(), e);
             throw e;
         }
-
-        reminderRepository.deleteById(reminderId);
-        System.out.println("✅ ReminderService: Напоминание удалено: " + reminderId);
-        return true;
     }
 
     @Override
     public boolean shouldNotifyNow(Reminder reminder) {
         LocalDateTime now = LocalDateTime.now();
-        LocalTime reminderTime = reminder.getReminderTime();
-
-        boolean timeMatches = now.getHour() == reminderTime.getHour() &&
-                now.getMinute() == reminderTime.getMinute();
-
+        LocalTime rt = reminder.getReminderTime();
+        boolean timeMatches = now.getHour() == rt.getHour() && now.getMinute() == rt.getMinute();
         boolean dayMatches = checkDayOfWeek(reminder, now);
-
-        System.out.println("Checking reminder " + reminder.getId() + " at " + now + " with time " + reminderTime + ", timeMatches=" + timeMatches + ", dayMatches=" + dayMatches);
-
+        logger.debug("Checking reminder {} now={} tm={} dm={}", reminder.getId(), now, timeMatches, dayMatches);
         return timeMatches && dayMatches;
     }
 
     private boolean checkDayOfWeek(Reminder reminder, LocalDateTime now) {
         String daysOfWeek = reminder.getDaysOfWeek();
-
-        if(daysOfWeek == null || daysOfWeek.equals("everyday")) {
-            return true;
-        }
-
+        if (daysOfWeek == null || daysOfWeek.equals("everyday")) return true;
         int currentDay = now.getDayOfWeek().getValue();
-
         return daysOfWeek.contains(String.valueOf(currentDay));
     }
 
     @Override
+    @CacheEvict(cacheNames = {"remindersByUser", "remindersAll"}, allEntries = true)
     public Reminder updateReminder(Long reminderId, Long medicineId, LocalTime reminderTime, String daysOfWeek) {
-        System.out.println("✏️ ReminderService: Обновление напоминания: " + reminderId);
-
+        logger.debug("Update reminder id={}", reminderId);
         Reminder reminder = reminderRepository.findById(reminderId)
-                .orElseThrow(() -> new RuntimeException("❌ ReminderService: Напоминание с ID " + reminderId + " не найдено"));
-
+                .orElseThrow(() -> new RuntimeException("Напоминание не найдено"));
         Medicine medicine = medicineService.findById(medicineId);
-        if (medicine == null) {
-            throw new RuntimeException("❌ ReminderService: Лекарство с ID " + medicineId + " не найдено");
-        }
-
+        if (medicine == null) throw new RuntimeException("Лекарство не найдено");
         reminder.setMedicine(medicine);
         reminder.setReminderTime(reminderTime);
-        if (daysOfWeek != null) {
-            reminder.setDaysOfWeek(daysOfWeek);
-        }
+        if (daysOfWeek != null) reminder.setDaysOfWeek(daysOfWeek);
+        Reminder updated = reminderRepository.save(reminder);
+        logger.info("Reminder {} updated", updated.getId());
+        return updated;
+    }
 
-        Reminder updatedReminder = reminderRepository.save(reminder);
-        System.out.println("✅ ReminderService: Напоминание обновлено: " + updatedReminder.getId());
-
-        return updatedReminder;
+    @Async
+    public CompletableFuture<List<Reminder>> getUserRemindersAsync(Long userId) {
+        return CompletableFuture.completedFuture(getUserReminders(userId));
     }
 }
