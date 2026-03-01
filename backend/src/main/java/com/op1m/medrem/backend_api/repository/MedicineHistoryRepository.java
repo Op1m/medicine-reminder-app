@@ -14,6 +14,12 @@ import java.util.List;
 
 public interface MedicineHistoryRepository extends JpaRepository<MedicineHistory, Long> {
     List<MedicineHistory> findByReminderUserOrderByScheduledTimeDesc(User user);
+    @Query("select h from MedicineHistory h " +
+            "left join fetch h.reminder r " +
+            "left join fetch r.medicine m " +
+            "left join fetch r.user u " +
+            "where h.id = :id")
+    MedicineHistory findWithReminderAndRelationsById(@Param("id") Long id);
     List<MedicineHistory> findByReminderUserAndStatusOrderByScheduledTimeDesc(User user, MedicineStatus status);
     @Query("SELECT mh FROM MedicineHistory mh WHERE mh.reminder.user = :user AND mh.scheduledTime BETWEEN :start AND :end ORDER BY mh.scheduledTime DESC")
     List<MedicineHistory> findByUserAndPeriod(@Param("user") User user,

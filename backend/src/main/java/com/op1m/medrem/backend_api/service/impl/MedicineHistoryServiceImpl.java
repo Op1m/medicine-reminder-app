@@ -97,16 +97,18 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
         return history;
     }
 
-    @Override
     @Transactional
+    @Override
     public MedicineHistory markAsSkipped(Long historyId) {
-        MedicineHistory history = medicineHistoryRepository.findById(historyId)
-                .orElseThrow(() -> new RuntimeException("History not found: " + historyId));
+        MedicineHistory history = medicineHistoryRepository.findWithReminderAndRelationsById(historyId);
+        if (history == null) {
+            throw new RuntimeException("MedicineHistory not found: " + historyId);
+        }
 
         history.setStatus(MedicineStatus.SKIPPED);
-        history.setTakenAt(LocalDateTime.now());
+        MedicineHistory saved = medicineHistoryRepository.save(history);
 
-        return medicineHistoryRepository.save(history);
+        return saved;
     }
 
     @Override
