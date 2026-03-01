@@ -106,16 +106,6 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
         history.setStatus(MedicineStatus.SKIPPED);
         history.setTakenAt(LocalDateTime.now());
 
-        if (history.getReminder() != null) {
-            if (history.getReminder().getMedicine() != null) {
-                history.getReminder().getMedicine().getName();
-            }
-            if (history.getReminder().getUser() != null) {
-                history.getReminder().getUser().getId();
-                history.getReminder().getUser().getUsername();
-            }
-        }
-
         return medicineHistoryRepository.save(history);
     }
 
