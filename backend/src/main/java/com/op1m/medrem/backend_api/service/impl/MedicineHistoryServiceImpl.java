@@ -84,7 +84,7 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
             history.setNotes(notes);
         }
 
-        return medicineHistoryRepository.save(history);
+        return history;
     }
 
     @Override
@@ -97,7 +97,7 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
         history.setStatus(MedicineStatus.SKIPPED);
         history.setTakenAt(LocalDateTime.now());
 
-        return medicineHistoryRepository.save(history);
+        return history;
     }
 
     @Override
