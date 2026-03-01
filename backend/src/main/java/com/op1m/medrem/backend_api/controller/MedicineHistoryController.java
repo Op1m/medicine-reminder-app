@@ -12,9 +12,13 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.io.StringWriter;
+import java.io.PrintWriter;
 import java.time.OffsetDateTime;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
+import java.util.HashMap;
+import java.util.Map;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -53,15 +57,46 @@ public class MedicineHistoryController {
     }
 
     @GetMapping("/user/{userId}/period")
-    public ResponseEntity<List<MedicineHistoryDTO>> getHistoryByPeriod (@PathVariable Long userId, @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
+    public ResponseEntity<List<MedicineHistoryDTO>> getHistoryByPeriod (
+            @PathVariable Long userId,
+            @RequestParam String start,
+            @RequestParam String end) {
         try {
-            List<MedicineHistory> history = medicineHistoryService.getHistoryByPeriod(userId, start, end);
+            LocalDateTime startDt = parseToLocalDateTime(start);
+            LocalDateTime endDt = parseToLocalDateTime(end);
+
+            List<MedicineHistory> history = medicineHistoryService.getHistoryByPeriod(userId, startDt, endDt);
             List<MedicineHistoryDTO> historyDTO = history.stream()
                     .map(DTOMapper::toMedicineHistoryDTO)
                     .collect(Collectors.toList());
             return new ResponseEntity<>(historyDTO, HttpStatus.OK);
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().build();
         } catch (RuntimeException e) {
+            e.printStackTrace();
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+
+    private LocalDateTime parseToLocalDateTime(String s) {
+        if (s == null) throw new IllegalArgumentException("date param is null");
+        String trimmed = s.trim();
+        try {
+            OffsetDateTime odt = OffsetDateTime.parse(trimmed);
+            return odt.toLocalDateTime();
+        } catch (DateTimeParseException ex) {
+            try {
+                return LocalDateTime.parse(trimmed);
+            } catch (DateTimeParseException ex2) {
+                String fallback = trimmed;
+                if (fallback.endsWith("Z")) fallback = fallback.substring(0, fallback.length() - 1);
+                try {
+                    return LocalDateTime.parse(fallback);
+                } catch (DateTimeParseException ex3) {
+                    throw new IllegalArgumentException("Cannot parse date: " + s);
+                }
+            }
         }
     }
 
@@ -89,7 +124,7 @@ public class MedicineHistoryController {
     }
 
     @PostMapping("/schedule")
-    public ResponseEntity<MedicineHistoryDTO> createScheduleDose(@RequestBody ScheduleDoseRequest request) {
+    public ResponseEntity<?> createScheduleDose(@RequestBody ScheduleDoseRequest request) {
         try {
             LocalDateTime scheduled = null;
             if (request.getScheduledTime() != null) {
@@ -104,10 +139,23 @@ public class MedicineHistoryController {
             MedicineHistory history = medicineHistoryService.createScheduleDose(request.getReminderId(), scheduled);
             MedicineHistoryDTO historyDTO = DTOMapper.toMedicineHistoryDTO(history);
             return new ResponseEntity<>(historyDTO, HttpStatus.OK);
-        } catch (RuntimeException e) {
+
+        } catch (Exception e) {
             e.printStackTrace();
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+
+            Map<String, String> err = new HashMap<>();
+            err.put("error", e.getMessage() == null ? e.toString() : e.getMessage());
+            err.put("trace", stackTraceToString(e));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(err);
         }
+    }
+
+    private String stackTraceToString(Throwable t) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        t.printStackTrace(pw);
+        pw.flush();
+        return sw.toString();
     }
 
     @PostMapping("/check_missed")
@@ -129,7 +177,6 @@ public class MedicineHistoryController {
 
         public Long getReminderId() { return reminderId; }
         public void setReminderId(Long reminderId) { this.reminderId = reminderId; }
-
         public String getScheduledTime() { return scheduledTime; }
         public void setScheduledTime(String scheduledTime) { this.scheduledTime = scheduledTime; }
     }
