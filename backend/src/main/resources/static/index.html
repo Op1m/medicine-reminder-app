@@ -1214,8 +1214,7 @@
             try { body = text ? JSON.parse(text) : null; } catch (e) { body = text; }
 
             if (!res.ok) {
-                const msg = `HTTP ${res.status} ${res.statusText}\nRequest: ${API_BASE + endpoint}\nResponse: ${text || '(empty)'}`;
-                throw new Error(msg);
+                throw new Error(`HTTP ${res.status} ${res.statusText}`);
             }
             if (res.status === 204) return {};
             return body;
@@ -1515,18 +1514,21 @@
                 const reminder = reminders.find(r => r.id === reminderId);
                 if (!reminder) return;
 
-                const now = new Date();
-                const [hour = 0, minute = 0] = (reminder.reminderTime || '00:00').split(':').map(Number);
-                const scheduledTime = new Date(now);
+                const [hour = 0, minute = 0] =
+                    (reminder.reminderTime || '00:00').split(':').map(Number);
+
+                const scheduledTime = new Date(selectedDay);
                 scheduledTime.setHours(hour, minute, 0, 0);
-                const scheduledISO = scheduledTime.toISOString();
 
                 const history = await apiFetch('/medicine-history/schedule', {
                     method: 'POST',
-                    body: JSON.stringify({ reminderId, scheduledTime: scheduledISO })
+                    body: JSON.stringify({
+                        reminderId,
+                        scheduledTime: scheduledTime.toISOString()
+                    })
                 });
 
-                if (!history || !history.id) return;
+                if (!history?.id) return;
 
                 await apiFetch(`/medicine-history/${history.id}/mark-taken`, {
                     method: 'PATCH',
@@ -1534,6 +1536,7 @@
                 });
 
                 await loadHistoryForDate(selectedDay);
+
             } catch (err) {
                 console.error('markReminderAsTaken', err);
             }
@@ -1544,26 +1547,33 @@
                 const reminder = reminders.find(r => r.id === reminderId);
                 if (!reminder) return;
 
-                const now = new Date();
-                const [hour = 0, minute = 0] = (reminder.reminderTime || '00:00').split(':').map(Number);
-                const scheduledTime = new Date(now);
+                const [hour = 0, minute = 0] =
+                    (reminder.reminderTime || '00:00').split(':').map(Number);
+
+                const scheduledTime = new Date(selectedDay);
                 scheduledTime.setHours(hour, minute, 0, 0);
-                const scheduledISO = scheduledTime.toISOString();
 
                 const history = await apiFetch('/medicine-history/schedule', {
                     method: 'POST',
-                    body: JSON.stringify({ reminderId, scheduledTime: scheduledISO })
+                    body: JSON.stringify({
+                        reminderId,
+                        scheduledTime: scheduledTime.toISOString()
+                    })
                 });
 
-                if (!history || !history.id) return;
+                if (!history?.id) return;
 
-                await apiFetch(`/medicine-history/${history.id}/mark-skipped`, { method: 'PATCH' });
+                await apiFetch(`/medicine-history/${history.id}/mark-skipped`, {
+                    method: 'PATCH'
+                });
 
                 await loadHistoryForDate(selectedDay);
+
             } catch (err) {
                 console.error('markReminderAsSkipped', err);
             }
         }
+
 
         async function deleteReminder(reminderId) {
             try {
@@ -1596,10 +1606,10 @@
             }
         });
 
-        postponeBtn?.addEventListener('click', () => alert('Отложено на 15 мин (заглушка)'));
-        editMed?.addEventListener('click', () => alert('Редактирование (заглушка)'));
+        postponeBtn?.addEventListener('click', () => { /* заглушка */ });
+        editMed?.addEventListener('click', () => { /* заглушка */ });
         btnBack?.addEventListener('click', () => { if (sheetOverlay) sheetOverlay.style.display = 'none'; });
-        btnInfo?.addEventListener('click', () => alert('Информация о препарате'));
+        btnInfo?.addEventListener('click', () => { /* заглушка */ });
 
         sheetOverlay?.addEventListener('click', (e) => { if (e.target === sheetOverlay) sheetOverlay.style.display = 'none'; });
 
@@ -1638,14 +1648,13 @@
         });
 
         $('postponeAllConfirm')?.addEventListener('click', () => {
-            alert('Функция отложить всё пока не реализована');
             if (takeAllSheet) takeAllSheet.style.display = 'none';
         });
         $('cancelTakeAll')?.addEventListener('click', () => { if (takeAllSheet) takeAllSheet.style.display = 'none'; });
 
         $('plusBtn')?.addEventListener('click', () => { if (addChoiceSheet) addChoiceSheet.style.display = 'flex'; });
         $('chooseNewMed')?.addEventListener('click', () => { if (addChoiceSheet) addChoiceSheet.style.display = 'none'; openCreateSheet(); });
-        $('chooseNewCourse')?.addEventListener('click', () => { if (addChoiceSheet) addChoiceSheet.style.display = 'none'; alert('Добавление курса (заглушка)'); });
+        $('chooseNewCourse')?.addEventListener('click', () => { if (addChoiceSheet) addChoiceSheet.style.display = 'none'; /* заглушка */ });
         $('cancelAddChoice')?.addEventListener('click', () => { if (addChoiceSheet) addChoiceSheet.style.display = 'none'; });
         addChoiceSheet?.addEventListener('click', (e) => { if (e.target === addChoiceSheet) addChoiceSheet.style.display = 'none'; });
 
@@ -1660,17 +1669,17 @@
 
         saveCreateMed?.addEventListener('click', () => {
             const name = medNameInput?.value?.trim();
-            if (!name) { alert('Введите название'); return; }
+            if (!name) { console.warn('Название не введено'); return; }
             const dose = medDoseInput?.value?.trim() || '1 таб.';
             const time = medTimeInput?.value;
-            if (!time) { alert('Выберите время'); return; }
+            if (!time) { console.warn('Время не выбрано'); return; }
             const food = medFoodSelect?.value;
             createMedicineAndReminder(name, dose, time, food);
             closeCreateSheet();
         });
         cancelCreateMed?.addEventListener('click', closeCreateSheet);
         closeCreateMed?.addEventListener('click', closeCreateSheet);
-        infoCreateMed?.addEventListener('click', () => alert('Заполните поля и нажмите Создать'));
+        infoCreateMed?.addEventListener('click', () => { /* заглушка */ });
         createMedSheet?.addEventListener('click', (e) => { if (e.target === createMedSheet) closeCreateSheet(); });
 
         function getWeekDays(date) {
@@ -1774,9 +1783,9 @@
                 </div>
             `;
             userSwitchList.querySelectorAll('.user-list-item[data-user]')?.forEach(item => {
-                item.addEventListener('click', () => { alert('Переключение (заглушка)'); if (userSwitchSheet) userSwitchSheet.style.display = 'none'; });
+                item.addEventListener('click', () => { if (userSwitchSheet) userSwitchSheet.style.display = 'none'; });
             });
-            $('addNewUser')?.addEventListener('click', () => { alert('Добавление пользователя (заглушка)'); if (userSwitchSheet) userSwitchSheet.style.display = 'none'; });
+            $('addNewUser')?.addEventListener('click', () => { if (userSwitchSheet) userSwitchSheet.style.display = 'none'; });
         }
 
         $('userSwitchBtn')?.addEventListener('click', () => { renderUserSwitchList(); if (userSwitchSheet) userSwitchSheet.style.display = 'flex'; });
