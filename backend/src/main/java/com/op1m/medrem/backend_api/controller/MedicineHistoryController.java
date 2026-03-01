@@ -12,6 +12,9 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -88,10 +91,21 @@ public class MedicineHistoryController {
     @PostMapping("/schedule")
     public ResponseEntity<MedicineHistoryDTO> createScheduleDose(@RequestBody ScheduleDoseRequest request) {
         try {
-            MedicineHistory history = medicineHistoryService.createScheduleDose(request.getReminderId(), request.getScheduledTime());
+            LocalDateTime scheduled = null;
+            if (request.getScheduledTime() != null) {
+                String s = request.getScheduledTime().trim();
+                try {
+                    scheduled = OffsetDateTime.parse(s).toLocalDateTime();
+                } catch (DateTimeParseException ex) {
+                    scheduled = LocalDateTime.parse(s);
+                }
+            }
+
+            MedicineHistory history = medicineHistoryService.createScheduleDose(request.getReminderId(), scheduled);
             MedicineHistoryDTO historyDTO = DTOMapper.toMedicineHistoryDTO(history);
             return new ResponseEntity<>(historyDTO, HttpStatus.OK);
         } catch (RuntimeException e) {
+            e.printStackTrace();
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
@@ -111,14 +125,12 @@ public class MedicineHistoryController {
 
     public static class ScheduleDoseRequest {
         private Long reminderId;
-
-        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-        private LocalDateTime scheduledTime;
+        private String scheduledTime;
 
         public Long getReminderId() { return reminderId; }
         public void setReminderId(Long reminderId) { this.reminderId = reminderId; }
 
-        public LocalDateTime getScheduledTime() { return scheduledTime; }
-        public void setScheduledTime(LocalDateTime scheduledTime) { this.scheduledTime = scheduledTime; }
+        public String getScheduledTime() { return scheduledTime; }
+        public void setScheduledTime(String scheduledTime) { this.scheduledTime = scheduledTime; }
     }
 }

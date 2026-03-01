@@ -3,12 +3,14 @@ package com.op1m.medrem.backend_api.service.impl;
 import com.op1m.medrem.backend_api.entity.Reminder;
 import com.op1m.medrem.backend_api.entity.User;
 import com.op1m.medrem.backend_api.entity.Medicine;
+import com.op1m.medrem.backend_api.repository.MedicineHistoryRepository;
 import com.op1m.medrem.backend_api.repository.ReminderRepository;
 import com.op1m.medrem.backend_api.service.ReminderService;
 import com.op1m.medrem.backend_api.service.UserService;
 import com.op1m.medrem.backend_api.service.MedicineService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -21,14 +23,17 @@ public class ReminderServiceImpl implements ReminderService{
     private final ReminderRepository reminderRepository;
     private final UserService userService;
     private final MedicineService medicineService;
+    private final MedicineHistoryRepository medicineHistoryRepository;
 
     @Autowired
     public ReminderServiceImpl(ReminderRepository reminderRepository,
                                UserService userService,
-                               MedicineService medicineService) {
+                               MedicineService medicineService,
+                               MedicineHistoryRepository medicineHistoryRepository) {
         this.reminderRepository = reminderRepository;
         this.userService = userService;
         this.medicineService = medicineService;
+        this.medicineHistoryRepository = medicineHistoryRepository;
     }
 
     @Override
@@ -164,17 +169,26 @@ public class ReminderServiceImpl implements ReminderService{
     }
 
     @Override
+    @Transactional
     public boolean deleteReminder(Long reminderId) {
         System.out.println("🗑️ ReminderService: Удаление напоминания: " + reminderId);
 
-        if(reminderRepository.existsById(reminderId)) {
-            reminderRepository.deleteById(reminderId);
-            System.out.println("✅ ReminderService: Напоминание удалено: " + reminderId);
-            return true;
+        if (!reminderRepository.existsById(reminderId)) {
+            System.out.println("❌ ReminderService: Напоминание не найдено для удаления: " + reminderId);
+            return false;
         }
 
-        System.out.println("❌ ReminderService: Напоминание не найдено для удаления: " + reminderId);
-        return false;
+        try {
+            medicineHistoryRepository.deleteByReminderId(reminderId);
+            System.out.println("✅ ReminderService: Удалены связанные записи medicine_history для reminderId=" + reminderId);
+        } catch (Exception e) {
+            System.err.println("Ошибка при удалении связанных записей medicine_history: " + e.getMessage());
+            throw e;
+        }
+
+        reminderRepository.deleteById(reminderId);
+        System.out.println("✅ ReminderService: Напоминание удалено: " + reminderId);
+        return true;
     }
 
     @Override
