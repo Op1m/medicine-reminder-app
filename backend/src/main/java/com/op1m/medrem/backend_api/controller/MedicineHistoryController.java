@@ -123,6 +123,11 @@ public class MedicineHistoryController {
         }
     }
 
+    @PostMapping("/{historyId}/mark-skipped")
+    public ResponseEntity<MedicineHistoryDTO> markAsSkippedPost(@PathVariable Long historyId) {
+        return markAsSkipped(historyId);
+    }
+
     @PostMapping("/schedule")
     public ResponseEntity<?> createScheduleDose(@RequestBody ScheduleDoseRequest request) {
         try {
