@@ -1,5 +1,8 @@
 package com.op1m.medrem.backend_api.service.impl;
 
+import com.op1m.medrem.backend_api.controller.MedicineHistoryController;
+import com.op1m.medrem.backend_api.dto.DTOMapper;
+import com.op1m.medrem.backend_api.dto.MedicineHistoryDTO;
 import com.op1m.medrem.backend_api.entity.*;
 import com.op1m.medrem.backend_api.entity.enums.MedicineStatus;
 import com.op1m.medrem.backend_api.repository.MedicineHistoryRepository;
@@ -7,10 +10,15 @@ import com.op1m.medrem.backend_api.repository.ReminderRepository;
 import com.op1m.medrem.backend_api.service.MedicineHistoryService;
 import com.op1m.medrem.backend_api.service.ReminderService;
 import com.op1m.medrem.backend_api.service.UserService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.hibernate.query.sql.internal.ParameterRecognizerImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.security.PublicKey;
 import java.time.LocalDateTime;
@@ -63,18 +71,33 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
     }
 
     @Override
+    @Transactional
     public MedicineHistory markAsTaken(Long historyId, String notes) {
-        MedicineHistory medicineHistory = historyRepository.findById(historyId).orElseThrow(() -> new RuntimeException("History record not found"));;
-        medicineHistory.markAsTaken();
-        medicineHistory.setNotes(notes);
-        return historyRepository.save(medicineHistory);
+
+        MedicineHistory history = medicineHistoryRepository.findById(historyId)
+                .orElseThrow(() -> new RuntimeException("History not found: " + historyId));
+
+        history.setStatus(MedicineStatus.TAKEN);
+        history.setTakenAt(LocalDateTime.now());
+
+        if (notes != null) {
+            history.setNotes(notes);
+        }
+
+        return medicineHistoryRepository.save(history);
     }
 
     @Override
+    @Transactional
     public MedicineHistory markAsSkipped(Long historyId) {
-        MedicineHistory medicineHistory = historyRepository.findById(historyId).orElseThrow(() -> new RuntimeException("History record not found"));;
-        medicineHistory.markAsSkipped();
-        return historyRepository.save(medicineHistory);
+
+        MedicineHistory history = medicineHistoryRepository.findById(historyId)
+                .orElseThrow(() -> new RuntimeException("History not found: " + historyId));
+
+        history.setStatus(MedicineStatus.SKIPPED);
+        history.setTakenAt(LocalDateTime.now());
+
+        return medicineHistoryRepository.save(history);
     }
 
     @Override

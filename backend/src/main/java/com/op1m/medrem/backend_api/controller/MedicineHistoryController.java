@@ -176,4 +176,6 @@ public class MedicineHistoryController {
         public String getScheduledTime() { return scheduledTime; }
         public void setScheduledTime(String scheduledTime) { this.scheduledTime = scheduledTime; }
     }
+
+
 }
