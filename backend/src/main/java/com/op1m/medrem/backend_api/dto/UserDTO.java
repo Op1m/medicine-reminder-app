@@ -14,10 +14,9 @@ public class UserDTO {
     private LocalDateTime updatedAt;
     private Boolean isActive;
 
-    public UserDTO(Long id, String username, String email, String firstName, String lastName, String photoUrl, Long telegramChatId, LocalDateTime createdAt, LocalDateTime updatedAt, Boolean active) {}
-
-    public UserDTO(Long id, String username, String email, String firstName, String lastName,
-                   Long telegramChatId, String photoUrl, LocalDateTime createdAt, LocalDateTime updatedAt, Boolean isActive) {
+    public UserDTO(Long id, String username, String email, String firstName,
+                   String lastName, String photoUrl, Long telegramChatId,
+                   LocalDateTime createdAt, LocalDateTime updatedAt, Boolean isActive) {
         this.id = id;
         this.username = username;
         this.email = email;
