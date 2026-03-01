@@ -80,7 +80,6 @@ public class StatisticsController {
     @GetMapping("/user/{userId}/streak")
     public ResponseEntity<Integer> getCurrentStreak(@PathVariable Long userId) {
         try {
-            // Простой endpoint для получения текущей серии
             StatisticsDTO.OverviewStats overview = statisticsService.getOverviewStats(userId);
             return new ResponseEntity<>(overview.getStreakDays(), HttpStatus.OK);
         } catch (RuntimeException e) {

@@ -69,7 +69,6 @@ public class CategoryServiceImpl implements CategoryService {
 
         Category category = findById(id);
 
-        // Проверка уникальности имени (если имя изменилось)
         if (!category.getName().equals(name) && categoryRepository.existsByName(name)) {
             throw new RuntimeException("❌ CategoryService: Категория с названием '" + name + "' уже существует");
         }

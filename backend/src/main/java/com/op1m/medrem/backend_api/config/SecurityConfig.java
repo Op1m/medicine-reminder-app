@@ -23,7 +23,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> {})
                 .headers(headers -> headers
-                        .frameOptions(frameOptions -> frameOptions.sameOrigin()) // Разрешить iframe
+                        .frameOptions(frameOptions -> frameOptions.sameOrigin())
                 )
                 .authorizeHttpRequests(auth -> auth
                         .anyRequest().permitAll()
