@@ -1577,7 +1577,10 @@
                     return;
                 }
 
+                alert("Marking historyId = " + historyId);
+
                 try {
+                    alert("Marking historyId = " + historyId);
                     const res = await apiFetch(`/medicine-history/${historyId}/mark-taken`, {
                         method: 'PATCH',
                         body: JSON.stringify({ notes: '' })
