@@ -1571,7 +1571,7 @@
                 }
 
                 await apiFetch(`/medicine-history/${historyEntry.id}/mark-skipped`, { method: 'PATCH' });
-                
+
                 historyEntry.status = 'skipped';
                 renderGroupsForDate(selectedDay);
 

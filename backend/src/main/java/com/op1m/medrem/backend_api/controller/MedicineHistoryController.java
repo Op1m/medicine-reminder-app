@@ -113,7 +113,7 @@ public class MedicineHistoryController {
     }
 
     @PatchMapping("/{historyId}/mark-skipped")
-    public ResponseEntity<MedicineHistoryDTO> markAsSkipped(@PathVariable Long historyId, @RequestBody(required = false)  MarkTakenRequest request) {
+    public ResponseEntity<MedicineHistoryDTO> markAsSkipped(@PathVariable Long historyId) {
         try {
             MedicineHistory history = medicineHistoryService.markAsSkipped(historyId);
             MedicineHistoryDTO historyDTO = DTOMapper.toMedicineHistoryDTO(history);
