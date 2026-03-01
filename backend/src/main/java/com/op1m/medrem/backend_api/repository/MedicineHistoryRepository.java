@@ -20,6 +20,12 @@ public interface MedicineHistoryRepository extends JpaRepository<MedicineHistory
                                               @Param("start") LocalDateTime start,
                                               @Param("end") LocalDateTime end);
     List<MedicineHistory> findByStatusAndScheduledTimeBefore(MedicineStatus status, LocalDateTime scheduledTime);
+    @Query("select mh from MedicineHistory mh " +
+            "join fetch mh.reminder r " +
+            "join fetch r.medicine m " +
+            "left join fetch r.user u " +
+            "where r.user.id = :userId and mh.scheduledTime between :start and :end")
+    List<MedicineHistory> findByUserIdAndPeriodWithFetch(@Param("userId") Long userId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
     @Modifying
     @Transactional
     @Query("delete from MedicineHistory mh where mh.reminder.id = :reminderId")

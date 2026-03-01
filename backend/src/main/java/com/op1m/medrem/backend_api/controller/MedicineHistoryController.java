@@ -128,24 +128,20 @@ public class MedicineHistoryController {
         try {
             LocalDateTime scheduled = null;
             if (request.getScheduledTime() != null) {
-                String s = request.getScheduledTime().trim();
                 try {
-                    scheduled = OffsetDateTime.parse(s).toLocalDateTime();
+                    scheduled = OffsetDateTime.parse(request.getScheduledTime()).toLocalDateTime();
                 } catch (DateTimeParseException ex) {
-                    scheduled = LocalDateTime.parse(s);
+                    scheduled = LocalDateTime.parse(request.getScheduledTime());
                 }
             }
-
             MedicineHistory history = medicineHistoryService.createScheduleDose(request.getReminderId(), scheduled);
-            MedicineHistoryDTO historyDTO = DTOMapper.toMedicineHistoryDTO(history);
-            return new ResponseEntity<>(historyDTO, HttpStatus.OK);
-
+            MedicineHistoryDTO dto = DTOMapper.toMedicineHistoryDTO(history);
+            return ResponseEntity.ok(dto);
         } catch (Exception e) {
             e.printStackTrace();
-
-            Map<String, String> err = new HashMap<>();
-            err.put("error", e.getMessage() == null ? e.toString() : e.getMessage());
-            err.put("trace", stackTraceToString(e));
+            Map<String,String> err = new HashMap<>();
+            err.put("error", e.getMessage());
+            err.put("trace", e.toString());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(err);
         }
     }
