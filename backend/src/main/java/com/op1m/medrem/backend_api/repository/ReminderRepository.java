@@ -12,7 +12,6 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long>{
     List<Reminder> findByUserAndIsActiveTrue (User user);
     List<Reminder> findByIsActiveTrue ();
     @Query("select r from Reminder r " +
-            "left join fetch r.medicine m " +
-            "where r.user.id = :userId")
+            "left join fetch r.medicine m ")
     List<Reminder> findAllActiveWithUserAndMedicine();
 }
