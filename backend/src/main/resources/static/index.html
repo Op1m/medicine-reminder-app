@@ -1214,7 +1214,7 @@
             try { body = text ? JSON.parse(text) : null; } catch (e) { body = text; }
 
             if (!res.ok) {
-                throw new Error(`HTTP ${res.status} ${res.statusText}`);
+                throw new Error(`HTTP ${res.status} ${res.statusText} ${text ? ' — ' + text : ''}`);
             }
             if (res.status === 204) return {};
             return body;
@@ -1602,7 +1602,8 @@
                 console.log('✏️ Отправляем запрос на пропуск для historyId =', historyEntry.id);
 
                 await apiFetch(`/medicine-history/${historyEntry.id}/mark-skipped`, {
-                    method: 'POST'
+                         method: 'PATCH',
+                         body: JSON.stringify({})
                 });
 
                 console.log('✅ Запрос на пропуск успешен');

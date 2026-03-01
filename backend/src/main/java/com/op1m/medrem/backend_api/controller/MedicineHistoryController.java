@@ -119,6 +119,7 @@ public class MedicineHistoryController {
             MedicineHistoryDTO historyDTO = DTOMapper.toMedicineHistoryDTO(history);
             return new ResponseEntity<>(historyDTO, HttpStatus.OK);
         } catch (RuntimeException e) {
+            e.printStackTrace();
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
