@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.security.PublicKey;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -155,5 +156,39 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
         for (MedicineHistory history : pendingHistories) {
             history.markAsMissed();
         }
+    }
+
+    @Override
+    @Transactional
+    public void markReminderAsTakenByBot(Long reminderId, Long telegramId) {
+        Reminder reminder = reminderRepository.findById(reminderId)
+                .orElseThrow(() -> new RuntimeException("Reminder not found: " + reminderId));
+
+        if (!reminder.getUser().getTelegramId().equals(telegramId)) {
+            throw new RuntimeException("Telegram ID does not match reminder owner");
+        }
+
+        LocalDate today = LocalDate.now();
+        LocalDateTime startOfDay = today.atStartOfDay();
+        LocalDateTime endOfDay = today.plusDays(1).atStartOfDay().minusNanos(1);
+
+        List<MedicineHistory> histories = historyRepository.findByUserAndPeriod(
+                reminder.getUser(), startOfDay, endOfDay);
+
+        MedicineHistory history = histories.stream()
+                .filter(h -> h.getReminder().getId().equals(reminderId))
+                .findFirst()
+                .orElse(null);
+
+        if (history == null) {
+            LocalDateTime scheduledTime = today.atTime(reminder.getReminderTime());
+            history = new MedicineHistory(reminder, scheduledTime);
+            history = historyRepository.save(history);
+        }
+
+        history.markAsTaken();
+        historyRepository.save(history);
+
+        System.out.println("✅ Напоминание " + reminderId + " отмечено как принято через бота");
     }
 }

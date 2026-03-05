@@ -3,6 +3,8 @@ package com.op1m.medrem.backend_api.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.op1m.medrem.backend_api.entity.User;
+import com.op1m.medrem.backend_api.service.MedicineHistoryService;
+import com.op1m.medrem.backend_api.service.SseEmitterManager;
 import com.op1m.medrem.backend_api.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,6 +24,12 @@ public class BotWebhookController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private MedicineHistoryService medicineHistoryService;
+
+    @Autowired
+    private SseEmitterManager emitterManager; // ← добавить
 
     @Value("${telegram.bot.token}")
     private String botToken;
@@ -48,7 +56,6 @@ public class BotWebhookController {
 
                 System.out.println("✅ Реальный chat_id: " + realChatId);
                 System.out.println("✅ Telegram ID: " + telegramId);
-                System.out.println("✅ Username: " + username);
 
                 User user = userService.findByTelegramId(telegramId);
 
@@ -66,25 +73,39 @@ public class BotWebhookController {
                     user.setTelegramChatId(realChatId);
                     userService.update(user);
                     System.out.println("✅ Обновлён chat_id для пользователя " + username);
-
                     sendWelcomeMessage(realChatId, firstName);
                 }
             }
 
             if (root.has("callback_query")) {
                 JsonNode callback = root.get("callback_query");
-                String data = callback.get("data").asText();
+                String callbackData = callback.get("data").asText();
                 JsonNode from = callback.get("from");
                 Long telegramId = from.get("id").asLong();
+                String callbackId = callback.get("id").asText();
+                JsonNode message = callback.get("message");
+                Integer messageId = message.get("message_id").asInt();
+                Long chatId = message.get("chat").get("id").asLong();
 
-                System.out.println("🔄 Callback data: " + data);
+                System.out.println("🔄 Callback data: " + callbackData + " from user " + telegramId);
 
-                if (data.startsWith("take_")) {
-                    Long reminderId = Long.parseLong(data.substring(5));
-                    System.out.println("✅ Пользователь " + telegramId + " принял лекарство " + reminderId);
-                } else if (data.startsWith("postpone_")) {
-                    Long reminderId = Long.parseLong(data.substring(9));
-                    System.out.println("⏰ Пользователь " + telegramId + " отложил лекарство " + reminderId);
+                if (callbackData.startsWith("take_")) {
+                    Long reminderId = Long.parseLong(callbackData.substring(5));
+
+                    medicineHistoryService.markReminderAsTakenByBot(reminderId, telegramId);
+
+                    emitterManager.sendUpdate(telegramId, "history-updated",
+                            Map.of("reminderId", reminderId, "action", "taken"));
+
+                    answerCallbackQuery(callbackId, "✅ Принято!");
+
+                    editMessageText(chatId, messageId, "✅ Вы приняли лекарство. Молодец!");
+
+                } else if (callbackData.startsWith("postpone_")) {
+                    Long reminderId = Long.parseLong(callbackData.substring(9));
+
+                    answerCallbackQuery(callbackId, "⏰ Напоминание отложено на 10 минут");
+                    editMessageText(chatId, messageId, "⏰ Напоминание отложено. Я напомню через 10 минут.");
                 }
             }
 
@@ -97,23 +118,32 @@ public class BotWebhookController {
         }
     }
 
+    private void answerCallbackQuery(String callbackId, String text) {
+        String url = "https://api.telegram.org/bot" + botToken + "/answerCallbackQuery";
+        Map<String, Object> body = new HashMap<>();
+        body.put("callback_query_id", callbackId);
+        body.put("text", text);
+        body.put("show_alert", false);
+        restTemplate.postForEntity(url, body, String.class);
+    }
+
+    private void editMessageText(Long chatId, Integer messageId, String newText) {
+        String url = "https://api.telegram.org/bot" + botToken + "/editMessageText";
+        Map<String, Object> body = new HashMap<>();
+        body.put("chat_id", chatId);
+        body.put("message_id", messageId);
+        body.put("text", newText);
+        restTemplate.postForEntity(url, body, String.class);
+    }
+
     private void sendWelcomeMessage(Long chatId, String firstName) {
         String url = "https://api.telegram.org/bot" + botToken + "/sendMessage";
-
         Map<String, Object> body = new HashMap<>();
         body.put("chat_id", chatId);
         body.put("text", String.format(
-                "👋 Привет, %s!\n\n" +
-                        "✅ Теперь я могу отправлять тебе уведомления о приёме лекарств.\n" +
-                        "💊 Ты будешь получать напоминания вовремя!",
+                "👋 Привет, %s!\n\n✅ Теперь я могу отправлять тебе уведомления о приёме лекарств.\n💊 Ты будешь получать напоминания вовремя!",
                 firstName != null ? firstName : "друг"
         ));
-
-        try {
-            restTemplate.postForEntity(url, body, String.class);
-            System.out.println("✅ Приветственное сообщение отправлено в чат " + chatId);
-        } catch (Exception e) {
-            System.err.println("❌ Ошибка отправки приветствия: " + e.getMessage());
-        }
+        restTemplate.postForEntity(url, body, String.class);
     }
 }
