@@ -86,6 +86,23 @@ public class TelegramAuthController {
             unpacked.putAll(data);
         }
 
+        Long chatId = null;
+        if (unpacked.containsKey("chat_id")) {
+            try {
+                chatId = Long.parseLong(unpacked.get("chat_id"));
+                System.out.println(">>> Найден chat_id: " + chatId);
+            } catch (NumberFormatException e) {
+                System.out.println(">>> Ошибка парсинга chat_id: " + unpacked.get("chat_id"));
+            }
+        } else if (unpacked.containsKey("chat_instance")) {
+            try {
+                chatId = Long.parseLong(unpacked.get("chat_instance"));
+                System.out.println(">>> Найден chat_instance как chat_id: " + chatId);
+            } catch (NumberFormatException e) {
+                System.out.println(">>> Ошибка парсинга chat_instance: " + unpacked.get("chat_instance"));
+            }
+        }
+
         Map<String, Object> userMap = extractUser(unpacked);
         if (userMap.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -102,6 +119,9 @@ public class TelegramAuthController {
         if (user == null) {
             user = new User();
             user.setTelegramId(tgId);
+            if (chatId != null) {
+                user.setTelegramChatId(chatId);
+            }
             user.setUsername(username != null ? username : "tg_" + tgId);
             user.setFirstName(firstName);
             user.setLastName(lastName);
@@ -112,7 +132,9 @@ public class TelegramAuthController {
             user.setUpdatedAt(LocalDateTime.now());
             user.setActive(true);
             user = userService.save(user);
-            System.out.println(">>> Created new user with id=" + user.getId() + ", telegramId=" + user.getTelegramId());
+            System.out.println(">>> Created new user with id=" + user.getId() +
+                    ", telegramId=" + user.getTelegramId() +
+                    ", chatId=" + user.getTelegramChatId());
         } else {
             user.setFirstName(firstName);
             user.setLastName(lastName);
@@ -120,16 +142,25 @@ public class TelegramAuthController {
                 user.setUsername(username);
             }
             user.setPhotoUrl(photoUrl);
+            user.setTelegramId(tgId);
+            if (chatId != null) {
+                user.setTelegramChatId(chatId);
+            }
             user.setUpdatedAt(LocalDateTime.now());
             user = userService.update(user);
-            System.out.println(">>> Updated existing user with id=" + user.getId() + ", telegramId=" + user.getTelegramId());
+            System.out.println(">>> Updated existing user with id=" + user.getId() +
+                    ", telegramId=" + user.getTelegramId() +
+                    ", chatId=" + user.getTelegramChatId());
         }
 
         String token = tokenProvider.generateToken(user);
 
         UserDTO userDTO = DTOMapper.toUserDTO(user);
 
-        System.out.println(">>> Returning user: id=" + user.getId() + ", telegramId=" + user.getTelegramId() + ", username=" + user.getUsername());
+        System.out.println(">>> Returning user: id=" + user.getId() +
+                ", telegramId=" + user.getTelegramId() +
+                ", chatId=" + user.getTelegramChatId() +
+                ", username=" + user.getUsername());
 
         return ResponseEntity.ok(Map.of(
                 "ok", true,
