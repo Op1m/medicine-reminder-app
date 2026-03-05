@@ -4,5 +4,6 @@ public enum MedicineStatus {
     PENDING,
     TAKEN,
     SKIPPED,
-    MISSED
+    MISSED,
+    POSTPONED
 }

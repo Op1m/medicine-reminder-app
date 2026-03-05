@@ -12,6 +12,8 @@ public interface MedicineHistoryService {
     List<MedicineHistory> getUserMedicineHistory(Long userId);
     List<MedicineHistory> getMedicineHistoryByStatus(Long userId, MedicineStatus status);
     List<MedicineHistory> getHistoryByPeriod(Long userId, LocalDateTime start, LocalDateTime end);
-    public void markReminderAsTakenByBot(Long reminderId, Long telegramId);
+    void markReminderAsTakenByBot(Long reminderId, Long telegramId);
+    MedicineHistory postponeReminder(Long reminderId, Long telegramId, int minutes);
+    void checkPostponedReminders();
     void checkAndMarkMissedDoses();
 }

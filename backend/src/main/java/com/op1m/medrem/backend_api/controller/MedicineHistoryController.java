@@ -3,14 +3,17 @@ package com.op1m.medrem.backend_api.controller;
 import com.op1m.medrem.backend_api.dto.MedicineHistoryDTO;
 import com.op1m.medrem.backend_api.dto.DTOMapper;
 import com.op1m.medrem.backend_api.entity.MedicineHistory;
+import com.op1m.medrem.backend_api.entity.User;
 import com.op1m.medrem.backend_api.entity.enums.MedicineStatus;
 import com.op1m.medrem.backend_api.service.MedicineHistoryService;
 import com.op1m.medrem.backend_api.service.MedicineService;
+import com.op1m.medrem.backend_api.service.UserService;
 import jakarta.persistence.GeneratedValue;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import java.io.StringWriter;
 import java.io.PrintWriter;
@@ -29,6 +32,9 @@ import java.util.stream.Collectors;
 public class MedicineHistoryController {
     @Autowired
     private MedicineHistoryService medicineHistoryService;
+
+    @Autowired
+    private UserService userService;
 
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<MedicineHistoryDTO>> getUserHistory(@PathVariable Long userId) {
@@ -109,6 +115,24 @@ public class MedicineHistoryController {
             return new ResponseEntity<>(historyDTO, HttpStatus.OK);
         } catch (RuntimeException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+
+    @PostMapping("/reminder/{reminderId}/postpone")
+    public ResponseEntity<?> postponeReminder(
+            @PathVariable Long reminderId,
+            @RequestParam(defaultValue = "10") int minutes,
+            Authentication authentication) {
+        try {
+            String username = authentication.getName();
+            User user = userService.findByUsername(username);
+
+            MedicineHistory postponed = medicineHistoryService.postponeReminder(
+                    reminderId, user.getTelegramId(), minutes);
+
+            return ResponseEntity.ok(DTOMapper.toMedicineHistoryDTO(postponed));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 

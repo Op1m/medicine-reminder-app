@@ -1,6 +1,7 @@
 package com.op1m.medrem.backend_api.repository;
 
 import com.op1m.medrem.backend_api.entity.MedicineHistory;
+import com.op1m.medrem.backend_api.entity.Reminder;
 import com.op1m.medrem.backend_api.entity.User;
 import com.op1m.medrem.backend_api.entity.enums.MedicineStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -30,7 +31,9 @@ public interface MedicineHistoryRepository extends JpaRepository<MedicineHistory
             "ORDER BY mh.scheduledTime DESC")
     List<MedicineHistory> findByUserAndPeriod(@Param("user") User user, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
+    List<MedicineHistory> findByStatusAndScheduledTimeBetween(MedicineStatus status, LocalDateTime start, LocalDateTime end);
     List<MedicineHistory> findByStatusAndScheduledTimeBefore(MedicineStatus status, LocalDateTime scheduledTime);
+    List<MedicineHistory> findByReminderAndScheduledTimeAfter(Reminder reminder, LocalDateTime time);
 
     @Query("select mh from MedicineHistory mh " +
             "join fetch mh.reminder r " +

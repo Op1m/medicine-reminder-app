@@ -2,6 +2,7 @@ package com.op1m.medrem.backend_api.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.op1m.medrem.backend_api.entity.MedicineHistory;
 import com.op1m.medrem.backend_api.entity.User;
 import com.op1m.medrem.backend_api.service.MedicineHistoryService;
 import com.op1m.medrem.backend_api.service.SseEmitterManager;
@@ -101,11 +102,20 @@ public class BotWebhookController {
 
                     editMessageText(chatId, messageId, "✅ Вы приняли лекарство. Молодец!");
 
-                } else if (callbackData.startsWith("postpone_")) {
-                    Long reminderId = Long.parseLong(callbackData.substring(9));
+                }
+                if (callbackData.startsWith("postpone_")) {
+                    String[] parts = callbackData.split("_");
+                    Long reminderId = Long.parseLong(parts[1]);
+                    int minutes = parts.length > 2 ? Integer.parseInt(parts[2]) : 10;
 
-                    answerCallbackQuery(callbackId, "⏰ Напоминание отложено на 10 минут");
-                    editMessageText(chatId, messageId, "⏰ Напоминание отложено. Я напомню через 10 минут.");
+                    MedicineHistory postponed = medicineHistoryService.postponeReminder(reminderId, telegramId, minutes);
+
+                    emitterManager.sendUpdate(telegramId, "history-updated",
+                            Map.of("reminderId", reminderId, "action", "postponed", "newTime", postponed.getScheduledTime()));
+
+                    answerCallbackQuery(callbackId, "⏰ Напоминание отложено на " + minutes + " минут");
+
+                    editMessagePostponed(chatId, messageId, reminderId, minutes);
                 }
             }
 
@@ -116,6 +126,30 @@ public class BotWebhookController {
             e.printStackTrace();
             return ResponseEntity.ok().body("{\"ok\":false, \"error\":\"" + e.getMessage() + "\"}");
         }
+    }
+
+    private void editMessagePostponed(Long chatId, Integer messageId, Long reminderId, int minutes) {
+        String url = "https://api.telegram.org/bot" + botToken + "/editMessageText";
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("chat_id", chatId);
+        body.put("message_id", messageId);
+        body.put("text", String.format(
+                "⏰ Напоминание отложено на %d минут. Я напомню снова через %d минут.\n\n" +
+                        "А пока можешь отметить сейчас:",
+                minutes, minutes
+        ));
+
+        Map<String, Object> replyMarkup = new HashMap<>();
+        replyMarkup.put("inline_keyboard", new Object[]{
+                new Object[]{
+                        Map.of("text", "✅ Принять сейчас", "callback_data", "take_" + reminderId),
+                        Map.of("text", "❌ Пропустить", "callback_data", "skip_" + reminderId)
+                }
+        });
+        body.put("reply_markup", replyMarkup);
+
+        restTemplate.postForEntity(url, body, String.class);
     }
 
     private void answerCallbackQuery(String callbackId, String text) {

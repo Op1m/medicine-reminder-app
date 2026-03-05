@@ -19,21 +19,40 @@ public class TelegramBotService {
     private final RestTemplate restTemplate = new RestTemplate();
     private static final String TELEGRAM_API_URL = "https://api.telegram.org/bot";
 
-    public void sendReminder(Long chatId, String medicineName, String dosage, Long reminderId) {
+    public void sendReminder(Long chatId, String medicineName, String dosage, Long reminderId, boolean isPostponed) {
         String url = TELEGRAM_API_URL + botToken + "/sendMessage";
 
         Map<String, Object> body = new HashMap<>();
         body.put("chat_id", chatId);
-        body.put("text", String.format("💊 Пора принять %s (%s)", medicineName, dosage));
+
+        String text;
+        if (isPostponed) {
+            text = String.format("⏰ Повторное напоминание! Пора принять %s (%s)", medicineName, dosage);
+        } else {
+            text = String.format("💊 Пора принять %s (%s)", medicineName, dosage);
+        }
+        body.put("text", text);
         body.put("parse_mode", "HTML");
 
         Map<String, Object> replyMarkup = new HashMap<>();
-        replyMarkup.put("inline_keyboard", new Object[]{
-                new Object[]{
-                        Map.of("text", "✅ Принял", "callback_data", "take_" + reminderId),
-                        Map.of("text", "⏰ Отложить на 10 мин", "callback_data", "postpone_" + reminderId)
-                }
-        });
+
+        if (isPostponed) {
+            replyMarkup.put("inline_keyboard", new Object[]{
+                    new Object[]{
+                            Map.of("text", "✅ Принять", "callback_data", "take_" + reminderId),
+                            Map.of("text", "❌ Пропустить", "callback_data", "skip_" + reminderId)
+                    }
+            });
+        } else {
+            replyMarkup.put("inline_keyboard", new Object[]{
+                    new Object[]{
+                            Map.of("text", "✅ Принять", "callback_data", "take_" + reminderId),
+                            Map.of("text", "⏰ Отложить 10 мин", "callback_data", "postpone_" + reminderId + "_10"),
+                            Map.of("text", "❌ Пропустить", "callback_data", "skip_" + reminderId)
+                    }
+            });
+        }
+
         body.put("reply_markup", replyMarkup);
 
         HttpHeaders headers = new HttpHeaders();

@@ -47,6 +47,8 @@ public class ReminderScheduler {
 
         System.out.println("📊 ReminderScheduler: Найдено напоминаний: " + dueReminders.size());
 
+        medicineHistoryService.checkPostponedReminders();
+
         medicineHistoryService.checkAndMarkMissedDoses();
     }
 

@@ -160,6 +160,44 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
 
     @Override
     @Transactional
+    public MedicineHistory postponeReminder(Long reminderId, Long telegramId, int minutes) {
+        Reminder reminder = reminderRepository.findById(reminderId)
+                .orElseThrow(() -> new RuntimeException("Reminder not found: " + reminderId));
+
+        if (!reminder.getUser().getTelegramId().equals(telegramId)) {
+            throw new RuntimeException("Telegram ID does not match reminder owner");
+        }
+
+        LocalDateTime newScheduledTime = LocalDateTime.now().plusMinutes(minutes);
+
+        MedicineHistory postponedHistory = new MedicineHistory(reminder, newScheduledTime);
+        postponedHistory.setStatus(MedicineStatus.POSTPONED);
+        postponedHistory.setNotes("Отложено на " + minutes + " минут");
+
+        MedicineHistory saved = historyRepository.save(postponedHistory);
+
+        System.out.println("⏰ Напоминание " + reminderId + " отложено на " + minutes + " минут. Новая запись ID: " + saved.getId());
+
+        return saved;
+    }
+
+    @Override
+    @Transactional
+    public void checkPostponedReminders() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime threshold = now.minusSeconds(5);
+
+        List<MedicineHistory> postponedHistories = historyRepository.findByStatusAndScheduledTimeBetween( MedicineStatus.POSTPONED, now.minusMinutes(1), now );
+
+        for (MedicineHistory history : postponedHistories) {
+            history.setStatus(MedicineStatus.PENDING);
+            history.setNotes("Повторное напоминание");
+            System.out.println("⏰ Отложенное напоминание активировано: " + history.getId());
+        }
+    }
+
+    @Override
+    @Transactional
     public void markReminderAsTakenByBot(Long reminderId, Long telegramId) {
         Reminder reminder = reminderRepository.findById(reminderId)
                 .orElseThrow(() -> new RuntimeException("Reminder not found: " + reminderId));
