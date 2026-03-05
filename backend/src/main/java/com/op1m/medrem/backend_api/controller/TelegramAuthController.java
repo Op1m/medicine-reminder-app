@@ -88,25 +88,11 @@ public class TelegramAuthController {
 
         Long chatId = null;
         if (unpacked.containsKey("chat_id")) {
-            String chatIdStr = unpacked.get("chat_id");
-            System.out.println(">>> raw chat_id string: '" + chatIdStr + "'");
-            System.out.println(">>> length: " + chatIdStr.length());
-
             try {
-                chatId = Long.parseLong(chatIdStr);
-                System.out.println(">>> parsed as Long: " + chatId);
+                chatId = Long.parseLong(unpacked.get("chat_id"));
+                System.out.println(">>> Найден chat_id: " + chatId);
             } catch (NumberFormatException e) {
-                System.out.println(">>> НЕ удалось распарсить как Long!");
-
-                java.math.BigInteger big = new java.math.BigInteger(chatIdStr);
-                System.out.println(">>> как BigInteger: " + big);
-            }
-        } else if (unpacked.containsKey("chat_instance")) {
-            try {
-                chatId = Long.parseLong(unpacked.get("chat_instance"));
-                System.out.println(">>> Найден chat_instance как chat_id: " + chatId);
-            } catch (NumberFormatException e) {
-                System.out.println(">>> Ошибка парсинга chat_instance: " + unpacked.get("chat_instance"));
+                System.out.println(">>> Ошибка парсинга chat_id: " + unpacked.get("chat_id"));
             }
         }
 
