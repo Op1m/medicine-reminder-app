@@ -183,6 +183,40 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
 
     @Override
     @Transactional
+    public void markReminderAsSkippedByBot(Long reminderId, Long telegramId) {
+        Reminder reminder = reminderRepository.findById(reminderId)
+                .orElseThrow(() -> new RuntimeException("Reminder not found: " + reminderId));
+
+        if (!reminder.getUser().getTelegramId().equals(telegramId)) {
+            throw new RuntimeException("Telegram ID does not match reminder owner");
+        }
+
+        LocalDate today = LocalDate.now();
+        LocalDateTime startOfDay = today.atStartOfDay();
+        LocalDateTime endOfDay = today.plusDays(1).atStartOfDay().minusNanos(1);
+
+        List<MedicineHistory> histories = historyRepository.findByUserAndPeriod(
+                reminder.getUser(), startOfDay, endOfDay);
+
+        MedicineHistory history = histories.stream()
+                .filter(h -> h.getReminder().getId().equals(reminderId))
+                .findFirst()
+                .orElse(null);
+
+        if (history == null) {
+            LocalDateTime scheduledTime = today.atTime(reminder.getReminderTime());
+            history = new MedicineHistory(reminder, scheduledTime);
+            history = historyRepository.save(history);
+        }
+
+        history.setStatus(MedicineStatus.SKIPPED);
+        historyRepository.save(history);
+
+        System.out.println("✅ Напоминание " + reminderId + " отмечено как пропущено через бота");
+    }
+
+    @Override
+    @Transactional
     public void checkPostponedReminders() {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime threshold = now.minusSeconds(5);
