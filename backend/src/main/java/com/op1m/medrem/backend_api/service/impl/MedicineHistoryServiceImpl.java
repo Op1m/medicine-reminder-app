@@ -145,16 +145,15 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
 
 
     @Override
+    @Transactional
     public void checkAndMarkMissedDoses() {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime threshold = now.minusHours(2);
+        LocalDateTime threshold = LocalDateTime.now().minusMinutes(10);
+        List<MedicineHistory> pendingHistories = historyRepository.findByStatusAndScheduledTimeBefore(
+                MedicineStatus.PENDING, threshold
+        );
 
-        List<MedicineHistory> pendingDoses = historyRepository.findByStatusAndScheduledTimeBefore(MedicineStatus.PENDING, threshold);
-
-        for (MedicineHistory medicineHistory : pendingDoses) {
-            medicineHistory.markAsMissed();
-            historyRepository.save(medicineHistory);
-            System.out.println("⚠️ Помечен как пропущенный: " + medicineHistory.getId());
+        for (MedicineHistory history : pendingHistories) {
+            history.markAsMissed();
         }
     }
 }
