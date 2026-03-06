@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import java.security.PublicKey;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
@@ -41,9 +42,13 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
     @Autowired
     private MedicineHistoryRepository medicineHistoryRepository;
 
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
     @Override
     @Transactional
     public MedicineHistory createScheduleDose(Long reminderId, LocalDateTime scheduledTime) {
+        System.out.println("🔵 createScheduleDose: reminderId=" + reminderId + ", scheduledTime=" + scheduledTime);
+
         Reminder reminder = reminderRepository.findById(reminderId)
                 .orElseThrow(() -> new RuntimeException("Reminder not found: " + reminderId));
 
@@ -53,20 +58,7 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
         history.setStatus(MedicineStatus.PENDING);
 
         MedicineHistory saved = medicineHistoryRepository.save(history);
-
-        try {
-            if (saved.getReminder() != null) {
-                if (saved.getReminder().getMedicine() != null) {
-                    saved.getReminder().getMedicine().getName();
-                }
-                if (saved.getReminder().getUser() != null) {
-                    saved.getReminder().getUser().getId();
-                    saved.getReminder().getUser().getUsername();
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        System.out.println("✅ createScheduleDose: saved id=" + saved.getId() + ", status=" + saved.getStatus());
 
         return saved;
     }
@@ -74,6 +66,7 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
     @Override
     @Transactional
     public MedicineHistory markAsTaken(Long historyId, String notes) {
+        System.out.println("🟢 markAsTaken: historyId=" + historyId);
 
         MedicineHistory history = medicineHistoryRepository.findById(historyId)
                 .orElseThrow(() -> new RuntimeException("History not found: " + historyId));
@@ -85,22 +78,17 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
             history.setNotes(notes);
         }
 
-        if (history.getReminder() != null) {
-            if (history.getReminder().getMedicine() != null) {
-                history.getReminder().getMedicine().getName();
-            }
-            if (history.getReminder().getUser() != null) {
-                history.getReminder().getUser().getId();
-                history.getReminder().getUser().getUsername();
-            }
-        }
+        MedicineHistory saved = medicineHistoryRepository.save(history);
+        System.out.println("✅ markAsTaken: saved id=" + saved.getId() + ", status=" + saved.getStatus());
 
-        return history;
+        return saved;
     }
 
     @Transactional
     @Override
     public MedicineHistory markAsSkipped(Long historyId) {
+        System.out.println("🟡 markAsSkipped: historyId=" + historyId);
+
         MedicineHistory history = medicineHistoryRepository.findWithReminderAndRelationsById(historyId);
         if (history == null) {
             throw new RuntimeException("MedicineHistory not found: " + historyId);
@@ -108,6 +96,8 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
 
         history.setStatus(MedicineStatus.SKIPPED);
         MedicineHistory saved = medicineHistoryRepository.save(history);
+
+        System.out.println("✅ markAsSkipped: saved id=" + saved.getId() + ", status=" + saved.getStatus());
 
         return saved;
     }
@@ -118,7 +108,7 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
         if(user == null) {
             throw new RuntimeException("User not found");
         }
-        return  historyRepository.findByReminderUserOrderByScheduledTimeDesc(user);
+        return historyRepository.findByReminderUserOrderByScheduledTimeDesc(user);
     }
 
     @Override
@@ -127,48 +117,77 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
         if(user == null) {
             throw new RuntimeException("User not found");
         }
-        return  historyRepository.findByReminderUserAndStatusOrderByScheduledTimeDesc(user, status);
+        return historyRepository.findByReminderUserAndStatusOrderByScheduledTimeDesc(user, status);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<MedicineHistory> getHistoryByPeriod(Long userId, LocalDateTime start, LocalDateTime end) {
+        System.out.println("📋 getHistoryByPeriod: userId=" + userId +
+                ", start=" + start.format(FORMATTER) +
+                ", end=" + end.format(FORMATTER));
+
         User user = userService.findById(userId);
         List<MedicineHistory> list = historyRepository.findByUserAndPeriod(user, start, end);
+
+        System.out.println("📊 Найдено записей: " + list.size());
         for (MedicineHistory h : list) {
-            if (h.getReminder() != null) {
-                if (h.getReminder().getMedicine() != null) h.getReminder().getMedicine().getName();
-                if (h.getReminder().getUser() != null) h.getReminder().getUser().getId();
-            }
+            System.out.println("   - id=" + h.getId() +
+                    ", status=" + h.getStatus() +
+                    ", scheduled=" + h.getScheduledTime().format(FORMATTER) +
+                    ", reminderId=" + h.getReminder().getId());
         }
+
         return list;
     }
-
 
     @Override
     @Transactional
     public void checkAndMarkMissedDoses() {
         LocalDateTime threshold = LocalDateTime.now().minusMinutes(10);
+        System.out.println("🔍 checkAndMarkMissedDoses: threshold=" + threshold.format(FORMATTER));
+
         List<MedicineHistory> pendingHistories = historyRepository.findByStatusAndScheduledTimeBefore(
                 MedicineStatus.PENDING, threshold
         );
 
+        System.out.println("📊 Найдено просроченных PENDING: " + pendingHistories.size());
+
         for (MedicineHistory history : pendingHistories) {
+            System.out.println("   → Отмечаем как MISSED: id=" + history.getId() +
+                    ", scheduled=" + history.getScheduledTime().format(FORMATTER));
             history.markAsMissed();
+        }
+
+        if (!pendingHistories.isEmpty()) {
+            historyRepository.saveAll(pendingHistories);
+            System.out.println("✅ Отмечено как MISSED: " + pendingHistories.size());
         }
     }
 
     @Override
     @Transactional
     public MedicineHistory postponeReminder(Long reminderId, Long telegramId, int minutes) {
+        System.out.println("⏰ postponeReminder: reminderId=" + reminderId +
+                ", telegramId=" + telegramId +
+                ", minutes=" + minutes);
+
         Reminder reminder = reminderRepository.findById(reminderId)
                 .orElseThrow(() -> new RuntimeException("Reminder not found: " + reminderId));
 
+        System.out.println("   → Найден reminder: id=" + reminder.getId() +
+                ", medicine=" + reminder.getMedicine().getName() +
+                ", user=" + reminder.getUser().getUsername() +
+                ", user.telegramId=" + reminder.getUser().getTelegramId());
+
         if (!reminder.getUser().getTelegramId().equals(telegramId)) {
+            System.err.println("❌ Ошибка: Telegram ID не совпадает! expected=" +
+                    reminder.getUser().getTelegramId() + ", actual=" + telegramId);
             throw new RuntimeException("Telegram ID does not match reminder owner");
         }
 
         LocalDateTime newScheduledTime = LocalDateTime.now().plusMinutes(minutes);
+        System.out.println("   → Новое запланированное время: " + newScheduledTime.format(FORMATTER));
 
         MedicineHistory postponedHistory = new MedicineHistory(reminder, newScheduledTime);
         postponedHistory.setStatus(MedicineStatus.POSTPONED);
@@ -176,7 +195,17 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
 
         MedicineHistory saved = historyRepository.save(postponedHistory);
 
-        System.out.println("⏰ Напоминание " + reminderId + " отложено на " + minutes + " минут. Новая запись ID: " + saved.getId());
+        System.out.println("✅ POSTPONED сохранён: id=" + saved.getId() +
+                ", status=" + saved.getStatus() +
+                ", scheduledTime=" + saved.getScheduledTime().format(FORMATTER) +
+                ", notes=" + saved.getNotes());
+
+        MedicineHistory check = historyRepository.findById(saved.getId()).orElse(null);
+        if (check != null) {
+            System.out.println("🔍 Проверка сохранения: id=" + check.getId() +
+                    ", status=" + check.getStatus() +
+                    " (должен быть POSTPONED)");
+        }
 
         return saved;
     }
@@ -184,10 +213,14 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
     @Override
     @Transactional
     public void markReminderAsSkippedByBot(Long reminderId, Long telegramId) {
+        System.out.println("🟡 markReminderAsSkippedByBot: reminderId=" + reminderId + ", telegramId=" + telegramId);
+
         Reminder reminder = reminderRepository.findById(reminderId)
                 .orElseThrow(() -> new RuntimeException("Reminder not found: " + reminderId));
 
         if (!reminder.getUser().getTelegramId().equals(telegramId)) {
+            System.err.println("❌ Ошибка: Telegram ID не совпадает! expected=" +
+                    reminder.getUser().getTelegramId() + ", actual=" + telegramId);
             throw new RuntimeException("Telegram ID does not match reminder owner");
         }
 
@@ -198,6 +231,8 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
         List<MedicineHistory> histories = historyRepository.findByUserAndPeriod(
                 reminder.getUser(), startOfDay, endOfDay);
 
+        System.out.println("   → Найдено записей за сегодня: " + histories.size());
+
         MedicineHistory history = histories.stream()
                 .filter(h -> h.getReminder().getId().equals(reminderId))
                 .findFirst()
@@ -207,6 +242,7 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
             LocalDateTime scheduledTime = today.atTime(reminder.getReminderTime());
             history = new MedicineHistory(reminder, scheduledTime);
             history = historyRepository.save(history);
+            System.out.println("   → Создана новая запись: id=" + history.getId());
         }
 
         history.setStatus(MedicineStatus.SKIPPED);
@@ -219,24 +255,44 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
     @Transactional
     public void checkPostponedReminders() {
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime threshold = now.minusSeconds(5);
+        System.out.println("⏰ checkPostponedReminders: now=" + now.format(FORMATTER));
 
-        List<MedicineHistory> postponedHistories = historyRepository.findByStatusAndScheduledTimeBetween( MedicineStatus.POSTPONED, now.minusMinutes(1), now );
+        List<MedicineHistory> postponedHistories = historyRepository.findByStatusAndScheduledTimeBetween(
+                MedicineStatus.POSTPONED,
+                now.minusMinutes(1),
+                now
+        );
+
+        System.out.println("📊 Найдено POSTPONED записей для активации: " + postponedHistories.size());
 
         for (MedicineHistory history : postponedHistories) {
+            System.out.println("   → Активируем: id=" + history.getId() +
+                    ", scheduled=" + history.getScheduledTime().format(FORMATTER) +
+                    ", old status=" + history.getStatus());
+
             history.setStatus(MedicineStatus.PENDING);
             history.setNotes("Повторное напоминание");
-            System.out.println("⏰ Отложенное напоминание активировано: " + history.getId());
+
+            System.out.println("   → Новый статус: " + history.getStatus());
+        }
+
+        if (!postponedHistories.isEmpty()) {
+            historyRepository.saveAll(postponedHistories);
+            System.out.println("✅ Активировано POSTPONED записей: " + postponedHistories.size());
         }
     }
 
     @Override
     @Transactional
     public void markReminderAsTakenByBot(Long reminderId, Long telegramId) {
+        System.out.println("🟢 markReminderAsTakenByBot: reminderId=" + reminderId + ", telegramId=" + telegramId);
+
         Reminder reminder = reminderRepository.findById(reminderId)
                 .orElseThrow(() -> new RuntimeException("Reminder not found: " + reminderId));
 
         if (!reminder.getUser().getTelegramId().equals(telegramId)) {
+            System.err.println("❌ Ошибка: Telegram ID не совпадает! expected=" +
+                    reminder.getUser().getTelegramId() + ", actual=" + telegramId);
             throw new RuntimeException("Telegram ID does not match reminder owner");
         }
 
@@ -247,6 +303,8 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
         List<MedicineHistory> histories = historyRepository.findByUserAndPeriod(
                 reminder.getUser(), startOfDay, endOfDay);
 
+        System.out.println("   → Найдено записей за сегодня: " + histories.size());
+
         MedicineHistory history = histories.stream()
                 .filter(h -> h.getReminder().getId().equals(reminderId))
                 .findFirst()
@@ -256,6 +314,7 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
             LocalDateTime scheduledTime = today.atTime(reminder.getReminderTime());
             history = new MedicineHistory(reminder, scheduledTime);
             history = historyRepository.save(history);
+            System.out.println("   → Создана новая запись: id=" + history.getId());
         }
 
         history.markAsTaken();

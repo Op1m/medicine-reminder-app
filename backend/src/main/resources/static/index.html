@@ -1879,11 +1879,7 @@
             let startY = 0;
             let startTime = 0;
             let swiping = false;
-            let didScroll = false;
-
-            let lastTapTime = 0;
-            let tapCount = 0;
-            let tapTimer = null;
+            let isVerticalScroll = false;
 
             card.addEventListener('touchstart', (e) => {
                 const t = e.touches[0];
@@ -1891,32 +1887,8 @@
                 startY = t.clientY;
                 startTime = Date.now();
                 swiping = false;
-                didScroll = false;
+                isVerticalScroll = false;
                 card.style.transition = 'none';
-
-                const currentTime = Date.now();
-                const timeDiff = currentTime - lastTapTime;
-
-                if (timeDiff < 300 && timeDiff > 0) {
-                    if (tapTimer) clearTimeout(tapTimer);
-                    tapCount = 0;
-                    e.preventDefault();
-                    e.stopPropagation();
-                    optimisticPostponeReminder(reminderId, card);
-                    lastTapTime = 0;
-                } else {
-                    tapCount = 1;
-                    lastTapTime = currentTime;
-
-                    tapTimer = setTimeout(() => {
-                        if (tapCount === 1 && !swiping && !didScroll) {
-                            openDetailSheet(reminderId);
-                        }
-                        tapCount = 0;
-                        lastTapTime = 0;
-                    }, 250);
-                }
-
             }, { passive: true });
 
             card.addEventListener('touchmove', (e) => {
@@ -1924,18 +1896,13 @@
                 const dx = t.clientX - startX;
                 const dy = t.clientY - startY;
 
-                if (Math.abs(dy) > 10) {
-                    didScroll = true;
+                if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
+                    isVerticalScroll = true;
+                    return;
                 }
 
                 if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
                     swiping = true;
-                    if (tapTimer) {
-                        clearTimeout(tapTimer);
-                        tapTimer = null;
-                        tapCount = 0;
-                        lastTapTime = 0;
-                    }
                     e.preventDefault();
                     card.style.transform = `translateX(${dx}px)`;
                 }
@@ -1948,18 +1915,14 @@
                 card.style.transition = 'transform 200ms ease';
 
                 if (swiping && Math.abs(dx) > 60) {
-                    if (tapTimer) {
-                        clearTimeout(tapTimer);
-                        tapTimer = null;
-                        tapCount = 0;
-                        lastTapTime = 0;
-                    }
-
                     if (dx > 0) {
                         optimisticMarkTaken(reminderId, card);
                     } else {
                         optimisticMarkSkipped(reminderId, card);
                     }
+                }
+                else if (!swiping && !isVerticalScroll && Math.abs(dx) < 10) {
+                    openDetailSheet(reminderId);
                 }
 
                 card.style.transform = 'translateX(0)';
@@ -1967,13 +1930,6 @@
                     card.style.transition = '';
                 }, 200);
             }, { passive: true });
-
-            card.addEventListener('click', (e) => {
-                if (tapCount === 0) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
-            });
         }
 
         function optimisticMarkTaken(reminderId, card) {
@@ -2317,10 +2273,11 @@
             if (!currentUser) return;
 
             const start = new Date(date);
-            start.setHours(0,0,0,0);
+            start.setHours(0, 0, 0, 0);
+
             const end = new Date(date);
-            end.setDate(end.getDate() + 1);
-            end.setHours(23,59,59,999);
+            end.setHours(23, 59, 59, 999);
+
             const dateKey = date.toISOString().split('T')[0];
 
             const cache = historyCache.get(dateKey);
@@ -2336,8 +2293,16 @@
                     `/medicine-history/user/${currentUser.id}/period?start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`
                 );
                 const data = Array.isArray(history) ? history : [];
-                historyMap.set(dateKey, data);
-                historyCache.set(dateKey, { data, timestamp: now });
+
+                const normalizedData = data.map(item => ({
+                    ...item,
+                    status: item.status ? item.status.toLowerCase() : 'pending'
+                }));
+
+                console.log(`📊 Загружена история на ${dateKey}:`, normalizedData);
+
+                historyMap.set(dateKey, normalizedData);
+                historyCache.set(dateKey, { data: normalizedData, timestamp: now });
                 renderGroupsForDate(date);
             } catch (err) {
                 console.warn('Ошибка загрузки истории', err);
@@ -2365,6 +2330,8 @@
             );
 
             if (!history) return 'pending';
+
+            console.log('📊 Статус из истории:', history.status, 'для reminder:', reminder.id);
 
             return (history.status || 'pending').toLowerCase();
         }
@@ -2450,12 +2417,21 @@
                     let statusHtml = '';
                     if (status === 'taken') {
                         statusHtml = `<span class="status-taken status-icon"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none"><path d="M20 6L9 17L4 12"/></svg> Принято</span>`;
-                    } else if (status === 'skipped' || status === 'missed') {
+                    }
+                    else if (status === 'skipped' || status === 'missed')
+                    {
                         statusHtml = `<span class="status-missed status-icon"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none"><path d="M18 6L6 18M6 6l12 12"/></svg> Пропущено</span>`;
-                    } else if (status === 'postponed') {
+                    }
+                    else if (status === 'postponed')
+                    {
                         const historyEntry = getHistoryForReminder(r, date);
-                        const postponedTime = historyEntry ? new Date(historyEntry.scheduledTime) : new Date(Date.now() + 10*60000);
-                        statusHtml = `<span class="status-postponed status-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#3498db" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Отложено до ${postponedTime.getHours()}:${postponedTime.getMinutes().toString().padStart(2, '0')}</span>`;
+                        if (historyEntry && historyEntry.scheduledTime) {
+                            const postponedTime = new Date(historyEntry.scheduledTime);
+                            statusHtml = `<span class="status-postponed status-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#3498db" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Отложено до ${postponedTime.getHours()}:${postponedTime.getMinutes().toString().padStart(2, '0')}</span>`;
+                        } else {
+                            const postponedTime = new Date(Date.now() + 10 * 60000);
+                            statusHtml = `<span class="status-postponed status-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#3498db" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Отложено</span>`;
+                        }
                     } else {
                         statusHtml = `<span class="status-pending status-icon"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="display: inline-block; vertical-align: middle; margin-right: 4px;"><path d="M12 7V12L13.5 14.5M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#7a8fa8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Ожидается</span>`;
                     }
