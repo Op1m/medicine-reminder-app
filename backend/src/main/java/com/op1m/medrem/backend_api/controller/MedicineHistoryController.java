@@ -14,6 +14,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import java.io.StringWriter;
 import java.io.PrintWriter;
@@ -154,6 +155,7 @@ public class MedicineHistoryController {
     }
 
     @PostMapping("/schedule")
+    @Transactional
     public ResponseEntity<?> createScheduleDose(@RequestBody ScheduleDoseRequest request) {
         try {
             LocalDateTime scheduled = null;
