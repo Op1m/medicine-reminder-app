@@ -109,7 +109,7 @@ public class BotWebhookController {
         Long chatId = message.get("chat").get("id").asLong();
 
         System.out.println("🔄 Callback data: " + callbackData + " from user " + telegramId);
-        
+
         answerCallbackQuery(callbackId, "⏳ Обрабатываю...");
 
         try {
@@ -142,6 +142,7 @@ public class BotWebhookController {
 
     private void handlePostpone(Long telegramId, String callbackData, Long chatId, Integer messageId) {
         System.out.println("⏰ handlePostpone: callbackData=" + callbackData + ", telegramId=" + telegramId);
+        System.out.println("🔥 callbackData starts with postpone_: " + callbackData);
 
         String[] parts = callbackData.split("_");
         Long reminderId = Long.parseLong(parts[1]);

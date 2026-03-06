@@ -71,6 +71,11 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
         MedicineHistory history = medicineHistoryRepository.findById(historyId)
                 .orElseThrow(() -> new RuntimeException("History not found: " + historyId));
 
+        if (history.getStatus() == MedicineStatus.TAKEN) {
+            System.out.println("⚠️ markAsTaken: уже TAKEN, пропускаем");
+            return history;
+        }
+
         history.setStatus(MedicineStatus.TAKEN);
         history.setTakenAt(LocalDateTime.now());
 
@@ -173,7 +178,7 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
         System.out.println("⏰ postponeReminder: reminderId=" + reminderId +
                 ", telegramId=" + telegramId +
                 ", minutes=" + minutes);
-        
+
         Reminder reminder = reminderRepository.findByIdWithUserAndMedicine(reminderId)
                 .orElseThrow(() -> new RuntimeException("Reminder not found: " + reminderId));
 
