@@ -40,7 +40,6 @@ public class BotWebhookController {
     private final ObjectMapper mapper = new ObjectMapper();
     private final RestTemplate restTemplate = new RestTemplate();
 
-
     @PostMapping("/webhook")
     public ResponseEntity<String> handleWebhook(@RequestBody String update) {
         try {
@@ -109,22 +108,24 @@ public class BotWebhookController {
         Long chatId = message.get("chat").get("id").asLong();
 
         System.out.println("🔄 Callback data: " + callbackData + " from user " + telegramId);
-        
+
         answerCallbackQuery(callbackId, "⏳ Обрабатываю...");
 
-        try {
-            if (callbackData.startsWith("take_")) {
-                handleTake(telegramId, callbackData, chatId, messageId);
-            } else if (callbackData.startsWith("postpone_")) {
-                handlePostpone(telegramId, callbackData, chatId, messageId);
-            } else if (callbackData.startsWith("skip_")) {
-                handleSkip(telegramId, callbackData, chatId, messageId);
+        CompletableFuture.runAsync(() -> {
+            try {
+                if (callbackData.startsWith("take_")) {
+                    handleTake(telegramId, callbackData, chatId, messageId);
+                } else if (callbackData.startsWith("postpone_")) {
+                    handlePostpone(telegramId, callbackData, chatId, messageId);
+                } else if (callbackData.startsWith("skip_")) {
+                    handleSkip(telegramId, callbackData, chatId, messageId);
+                }
+            } catch (Exception e) {
+                System.err.println("❌ Ошибка асинхронной обработки: " + e.getMessage());
+                e.printStackTrace();
+                sendErrorMessage(chatId);
             }
-        } catch (Exception e) {
-            System.err.println("❌ Ошибка обработки:");
-            e.printStackTrace();
-            sendErrorMessage(chatId);
-        }
+        });
     }
 
     private void handleTake(Long telegramId, String callbackData, Long chatId, Integer messageId) {

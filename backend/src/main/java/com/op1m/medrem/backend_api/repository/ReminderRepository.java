@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface ReminderRepository extends JpaRepository<Reminder, Long> {
 
@@ -26,10 +25,4 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
             "left join fetch r.user u " +
             "where r.user.id = :userId")
     List<Reminder> findByUserIdWithMedicine(@Param("userId") Long userId);
-
-    @Query("SELECT r FROM Reminder r " +
-            "LEFT JOIN FETCH r.user u " +
-            "LEFT JOIN FETCH r.medicine m " +
-            "WHERE r.id = :id")
-    Optional<Reminder> findByIdWithUserAndMedicine(@Param("id") Long id);
 }

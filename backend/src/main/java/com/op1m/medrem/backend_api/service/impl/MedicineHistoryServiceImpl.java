@@ -49,7 +49,7 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
     public MedicineHistory createScheduleDose(Long reminderId, LocalDateTime scheduledTime) {
         System.out.println("🔵 createScheduleDose: reminderId=" + reminderId + ", scheduledTime=" + scheduledTime);
 
-        Reminder reminder = reminderRepository.findByIdWithUserAndMedicine(reminderId)
+        Reminder reminder = reminderRepository.findById(reminderId)
                 .orElseThrow(() -> new RuntimeException("Reminder not found: " + reminderId));
 
         MedicineHistory history = new MedicineHistory();
@@ -173,8 +173,8 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
         System.out.println("⏰ postponeReminder: reminderId=" + reminderId +
                 ", telegramId=" + telegramId +
                 ", minutes=" + minutes);
-        
-        Reminder reminder = reminderRepository.findByIdWithUserAndMedicine(reminderId)
+
+        Reminder reminder = reminderRepository.findById(reminderId)
                 .orElseThrow(() -> new RuntimeException("Reminder not found: " + reminderId));
 
         System.out.println("   → Найден reminder: id=" + reminder.getId() +
@@ -189,7 +189,7 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
         }
 
         LocalDateTime newScheduledTime = LocalDateTime.now().plusMinutes(minutes);
-        System.out.println("   → Новое запланированное время: " + newScheduledTime);
+        System.out.println("   → Новое запланированное время: " + newScheduledTime.format(FORMATTER));
 
         MedicineHistory postponedHistory = new MedicineHistory(reminder, newScheduledTime);
         postponedHistory.setStatus(MedicineStatus.POSTPONED);
@@ -199,7 +199,15 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
 
         System.out.println("✅ POSTPONED сохранён: id=" + saved.getId() +
                 ", status=" + saved.getStatus() +
-                ", scheduledTime=" + saved.getScheduledTime());
+                ", scheduledTime=" + saved.getScheduledTime().format(FORMATTER) +
+                ", notes=" + saved.getNotes());
+
+        MedicineHistory check = historyRepository.findById(saved.getId()).orElse(null);
+        if (check != null) {
+            System.out.println("🔍 Проверка сохранения: id=" + check.getId() +
+                    ", status=" + check.getStatus() +
+                    " (должен быть POSTPONED)");
+        }
 
         return saved;
     }
