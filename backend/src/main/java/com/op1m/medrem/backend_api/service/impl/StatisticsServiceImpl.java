@@ -42,7 +42,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
 
-        List<MedicineHistory> history = medicineHistoryRepository.findByUserAndPeriodWithFetch(user, startDateTime, endDateTime);
+        List<MedicineHistory> history = medicineHistoryRepository.findByUserAndPeriod(user, startDateTime, endDateTime);
 
         int total = history.size();
         int taken = (int) history.stream().filter(h -> h.getStatus() == MedicineStatus.TAKEN).count();
@@ -67,7 +67,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
 
-        List<MedicineHistory> history = medicineHistoryRepository.findByUserAndPeriodWithFetch(user, startDateTime, endDateTime);
+        List<MedicineHistory> history = medicineHistoryRepository.findByUserAndPeriod(user, startDateTime, endDateTime);
 
         StatisticsDTO.MedicationStats stats = new StatisticsDTO.MedicationStats();
 
@@ -184,7 +184,7 @@ public class StatisticsServiceImpl implements StatisticsService {
             LocalDateTime startOfDay = checkDate.atStartOfDay();
             LocalDateTime endOfDay = checkDate.atTime(23, 59, 59);
 
-            List<MedicineHistory> dayHistory = medicineHistoryRepository.findByUserAndPeriodWithFetch(user, startOfDay, endOfDay);
+            List<MedicineHistory> dayHistory = medicineHistoryRepository.findByUserAndPeriod(user, startOfDay, endOfDay);
 
             if (dayHistory.isEmpty()) {
                 continue;
