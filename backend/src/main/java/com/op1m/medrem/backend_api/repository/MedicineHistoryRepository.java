@@ -27,28 +27,23 @@ public interface MedicineHistoryRepository extends JpaRepository<MedicineHistory
     List<MedicineHistory> findByReminderUserAndStatusOrderByScheduledTimeDesc(User user, MedicineStatus status);
 
     @Query("SELECT mh FROM MedicineHistory mh " +
-            "JOIN FETCH mh.reminder r " +
-            "JOIN FETCH r.medicine m " +
-            "JOIN FETCH r.user u " +
-            "WHERE u = :user AND mh.scheduledTime BETWEEN :start AND :end " +
+            "WHERE mh.reminder.user = :user AND mh.scheduledTime BETWEEN :start AND :end " +
             "ORDER BY mh.scheduledTime DESC")
-    List<MedicineHistory> findByUserAndPeriodWithFetch(@Param("user") User user, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    List<MedicineHistory> findByUserAndPeriod(@Param("user") User user, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
     List<MedicineHistory> findByStatusAndScheduledTimeBetween(MedicineStatus status, LocalDateTime start, LocalDateTime end);
-
     List<MedicineHistory> findByStatusAndScheduledTimeBefore(MedicineStatus status, LocalDateTime scheduledTime);
+    List<MedicineHistory> findByReminderAndScheduledTimeAfter(Reminder reminder, LocalDateTime time);
 
     @Query("select mh from MedicineHistory mh " +
             "join fetch mh.reminder r " +
             "join fetch r.medicine m " +
-            "join fetch r.user u " +
-            "where u.id = :userId and mh.scheduledTime between :start and :end")
+            "left join fetch r.user u " +
+            "where r.user.id = :userId and mh.scheduledTime between :start and :end")
     List<MedicineHistory> findByUserIdAndPeriodWithFetch(@Param("userId") Long userId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
     @Modifying
     @Transactional
     @Query("delete from MedicineHistory mh where mh.reminder.id = :reminderId")
     void deleteByReminderId(@Param("reminderId") Long reminderId);
-
-    List<MedicineHistory> findByReminderAndScheduledTimeAfter(Reminder reminder, LocalDateTime time);
 }
