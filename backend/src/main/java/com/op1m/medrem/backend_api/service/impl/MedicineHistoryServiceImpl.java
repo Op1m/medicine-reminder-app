@@ -128,14 +128,16 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
                 ", end=" + end.format(FORMATTER));
 
         User user = userService.findById(userId);
-        List<MedicineHistory> list = historyRepository.findByUserAndPeriod(user, start, end);
+        List<MedicineHistory> list = historyRepository.findByUserAndPeriodWithFetch(user, start, end);
 
         System.out.println("📊 Найдено записей: " + list.size());
         for (MedicineHistory h : list) {
             System.out.println("   - id=" + h.getId() +
                     ", status=" + h.getStatus() +
                     ", scheduled=" + h.getScheduledTime().format(FORMATTER) +
-                    ", reminderId=" + h.getReminder().getId());
+                    ", reminderId=" + h.getReminder().getId() +
+                    ", medicine=" + h.getReminder().getMedicine().getName() +
+                    ", user=" + h.getReminder().getUser().getUsername());
         }
 
         return list;
@@ -228,7 +230,7 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
         LocalDateTime startOfDay = today.atStartOfDay();
         LocalDateTime endOfDay = today.plusDays(1).atStartOfDay().minusNanos(1);
 
-        List<MedicineHistory> histories = historyRepository.findByUserAndPeriod(
+        List<MedicineHistory> histories = historyRepository.findByUserAndPeriodWithFetch(
                 reminder.getUser(), startOfDay, endOfDay);
 
         System.out.println("   → Найдено записей за сегодня: " + histories.size());
@@ -300,7 +302,7 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
         LocalDateTime startOfDay = today.atStartOfDay();
         LocalDateTime endOfDay = today.plusDays(1).atStartOfDay().minusNanos(1);
 
-        List<MedicineHistory> histories = historyRepository.findByUserAndPeriod(
+        List<MedicineHistory> histories = historyRepository.findByUserAndPeriodWithFetch(
                 reminder.getUser(), startOfDay, endOfDay);
 
         System.out.println("   → Найдено записей за сегодня: " + histories.size());
