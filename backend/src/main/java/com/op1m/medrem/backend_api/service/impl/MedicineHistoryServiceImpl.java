@@ -105,36 +105,81 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
 
     @Override
     @Transactional
-    public MedicineHistory postponeReminder(Long reminderId, Long telegramId, int minutes) {
-        Reminder reminder = reminderRepository.findById(reminderId)
-                .orElseThrow(() -> new RuntimeException("Reminder not found: " + reminderId));
+    public MedicineHistory postponeReminder(Long reminderId, Long chatId, int minutes) {
+        System.out.println("🔍 postponeReminder вызван: reminderId=" + reminderId +
+            ", chatId=" + chatId + ", minutes=" + minutes);
 
-        if (!reminder.getUser().getTelegramId().equals(telegramId)) {
-            throw new RuntimeException("Telegram ID does not match reminder owner");
+        Reminder reminder = reminderRepository.findById(reminderId)
+                .orElseThrow(() -> {
+                    System.err.println("❌ Reminder not found: " + reminderId);
+                    return new RuntimeException("Reminder not found: " + reminderId);
+                });
+
+        System.out.println("🔍 Найден reminder: id=" + reminder.getId() +
+            ", userId=" + reminder.getUser().getId() +
+            ", telegramChatId пользователя=" + reminder.getUser().getTelegramChatId());
+
+        if (!reminder.getUser().getTelegramChatId().equals(chatId)) {
+            System.err.println("❌ Chat ID mismatch: expected=" + reminder.getUser().getTelegramChatId() +
+                ", actual=" + chatId);
+            throw new RuntimeException("Chat ID does not match reminder owner");
         }
 
         OffsetDateTime newScheduledTime = OffsetDateTime.now(ZoneOffset.UTC).plusMinutes(minutes);
+        System.out.println("🔍 Новое время: " + newScheduledTime);
 
         MedicineHistory postponedHistory = new MedicineHistory(reminder, newScheduledTime);
         postponedHistory.setStatus(MedicineStatus.POSTPONED);
         postponedHistory.setNotes("Отложено на " + minutes + " минут");
 
         MedicineHistory saved = historyRepository.save(postponedHistory);
-
-        System.out.println("⏰ Напоминание " + reminderId + " отложено на " + minutes + " минут. Новая запись ID: " + saved.getId() +
-            ", время: " + newScheduledTime);
+        System.out.println("✅ Сохранено: id=" + saved.getId());
 
         return saved;
     }
 
     @Override
     @Transactional
-    public void markReminderAsSkippedByBot(Long reminderId, Long telegramId) {
+    public void markReminderAsTakenByBot(Long reminderId, Long chatId) {
         Reminder reminder = reminderRepository.findById(reminderId)
                 .orElseThrow(() -> new RuntimeException("Reminder not found: " + reminderId));
 
-        if (!reminder.getUser().getTelegramId().equals(telegramId)) {
-            throw new RuntimeException("Telegram ID does not match reminder owner");
+        if (!reminder.getUser().getTelegramChatId().equals(chatId)) {
+            throw new RuntimeException("Chat ID does not match reminder owner");
+        }
+
+        OffsetDateTime startOfDay = OffsetDateTime.now(ZoneOffset.UTC).withHour(0).withMinute(0).withSecond(0).withNano(0);
+        OffsetDateTime endOfDay = startOfDay.plusDays(1).minusNanos(1);
+
+        List<MedicineHistory> histories = historyRepository.findByUserAndPeriod(
+                reminder.getUser(), startOfDay, endOfDay);
+
+        MedicineHistory history = histories.stream()
+                .filter(h -> h.getReminder().getId().equals(reminderId))
+                .findFirst()
+                .orElse(null);
+
+        if (history == null) {
+            OffsetDateTime scheduledTime = startOfDay.withHour(reminder.getReminderTime().getHour())
+                    .withMinute(reminder.getReminderTime().getMinute());
+            history = new MedicineHistory(reminder, scheduledTime);
+            history = historyRepository.save(history);
+        }
+
+        history.markAsTaken();
+        historyRepository.save(history);
+
+        System.out.println("✅ Напоминание " + reminderId + " отмечено как принято через бота");
+    }
+
+    @Override
+    @Transactional
+    public void markReminderAsSkippedByBot(Long reminderId, Long chatId) {
+        Reminder reminder = reminderRepository.findById(reminderId)
+                .orElseThrow(() -> new RuntimeException("Reminder not found: " + reminderId));
+
+        if (!reminder.getUser().getTelegramChatId().equals(chatId)) {
+            throw new RuntimeException("Chat ID does not match reminder owner");
         }
 
         OffsetDateTime startOfDay = OffsetDateTime.now(ZoneOffset.UTC).withHour(0).withMinute(0).withSecond(0).withNano(0);
@@ -186,39 +231,5 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
             }
         }
         historyRepository.saveAll(postponedHistories);
-    }
-
-    @Override
-    @Transactional
-    public void markReminderAsTakenByBot(Long reminderId, Long telegramId) {
-        Reminder reminder = reminderRepository.findById(reminderId)
-                .orElseThrow(() -> new RuntimeException("Reminder not found: " + reminderId));
-
-        if (!reminder.getUser().getTelegramId().equals(telegramId)) {
-            throw new RuntimeException("Telegram ID does not match reminder owner");
-        }
-
-        OffsetDateTime startOfDay = OffsetDateTime.now(ZoneOffset.UTC).withHour(0).withMinute(0).withSecond(0).withNano(0);
-        OffsetDateTime endOfDay = startOfDay.plusDays(1).minusNanos(1);
-
-        List<MedicineHistory> histories = historyRepository.findByUserAndPeriod(
-                reminder.getUser(), startOfDay, endOfDay);
-
-        MedicineHistory history = histories.stream()
-                .filter(h -> h.getReminder().getId().equals(reminderId))
-                .findFirst()
-                .orElse(null);
-
-        if (history == null) {
-            OffsetDateTime scheduledTime = startOfDay.withHour(reminder.getReminderTime().getHour())
-                    .withMinute(reminder.getReminderTime().getMinute());
-            history = new MedicineHistory(reminder, scheduledTime);
-            history = historyRepository.save(history);
-        }
-
-        history.markAsTaken();
-        historyRepository.save(history);
-
-        System.out.println("✅ Напоминание " + reminderId + " отмечено как принято через бота");
     }
 }

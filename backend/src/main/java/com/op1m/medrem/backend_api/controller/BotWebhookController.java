@@ -100,25 +100,23 @@ public class BotWebhookController {
     private void handleCallbackQuery(JsonNode root) {
         JsonNode callback = root.get("callback_query");
         String callbackData = callback.get("data").asText();
-        JsonNode from = callback.get("from");
-        Long telegramId = from.get("id").asLong();
         String callbackId = callback.get("id").asText();
         JsonNode message = callback.get("message");
         Integer messageId = message.get("message_id").asInt();
         Long chatId = message.get("chat").get("id").asLong();
 
-        System.out.println("🔄 Callback data: " + callbackData + " from user " + telegramId);
+        System.out.println("🔄 Callback data: " + callbackData + " from chat " + chatId);
 
         answerCallbackQuery(callbackId, "⏳ Обрабатываю...");
 
         CompletableFuture.runAsync(() -> {
             try {
                 if (callbackData.startsWith("take_")) {
-                    handleTake(telegramId, callbackData, chatId, messageId);
+                    handleTake(chatId, callbackData, messageId);
                 } else if (callbackData.startsWith("postpone_")) {
-                    handlePostpone(telegramId, callbackData, chatId, messageId);
+                    handlePostpone(chatId, callbackData, messageId);
                 } else if (callbackData.startsWith("skip_")) {
-                    handleSkip(telegramId, callbackData, chatId, messageId);
+                    handleSkip(chatId, callbackData, messageId);
                 }
             } catch (Exception e) {
                 System.err.println("❌ Ошибка асинхронной обработки: " + e.getMessage());
@@ -128,39 +126,38 @@ public class BotWebhookController {
         });
     }
 
-    private void handleTake(Long telegramId, String callbackData, Long chatId, Integer messageId) {
+    private void handleTake(Long chatId, String callbackData, Integer messageId) {
         Long reminderId = Long.parseLong(callbackData.substring(5));
 
-        medicineHistoryService.markReminderAsTakenByBot(reminderId, telegramId);
+        System.out.println("✅ handleTake: reminderId=" + reminderId + ", chatId=" + chatId);
 
-        emitterManager.sendUpdate(telegramId, "history-updated",
+        medicineHistoryService.markReminderAsTakenByBot(reminderId, chatId);
+
+        emitterManager.sendUpdate(chatId, "history-updated",
                 Map.of("reminderId", reminderId, "action", "taken"));
 
         editMessageText(chatId, messageId, "✅ Вы приняли лекарство. Молодец!");
-
-        sendSuccessNotification(chatId, "✅ Отлично! Приём отмечен.");
     }
 
-    private void handlePostpone(Long telegramId, String callbackData, Long chatId, Integer messageId) {
+    private void handlePostpone(Long chatId, String callbackData, Integer messageId) {
         String[] parts = callbackData.split("_");
         Long reminderId = Long.parseLong(parts[1]);
         int minutes = parts.length > 2 ? Integer.parseInt(parts[2]) : 10;
 
-        System.out.println("⏰ Обработка откладывания: reminderId=" + reminderId +
-            ", minutes=" + minutes + ", telegramId=" + telegramId);
+        System.out.println("⏰ handlePostpone: reminderId=" + reminderId +
+            ", minutes=" + minutes + ", chatId=" + chatId);
 
         try {
-            MedicineHistory postponed = medicineHistoryService.postponeReminder(reminderId, telegramId, minutes);
+            MedicineHistory postponed = medicineHistoryService.postponeReminder(reminderId, chatId, minutes);
 
-            System.out.println("✅ Напоминание отложено: historyId=" + postponed.getId() +
-                ", новое время=" + postponed.getScheduledTime());
+            System.out.println("✅ Напоминание отложено: historyId=" + postponed.getId());
 
-            emitterManager.sendUpdate(telegramId, "history-updated",
+            emitterManager.sendUpdate(chatId, "history-updated",
                     Map.of("reminderId", reminderId, "action", "postponed", "newTime", postponed.getScheduledTime()));
 
             editMessagePostponed(chatId, messageId, reminderId, minutes);
 
-            sendSuccessNotification(chatId, "⏰ Напоминание отложено на " + minutes + " минут. Я напомню снова через " + minutes + " минут.");
+            sendSuccessNotification(chatId, "⏰ Напоминание отложено на " + minutes + " минут");
 
         } catch (Exception e) {
             System.err.println("❌ Ошибка откладывания: " + e.getMessage());
@@ -169,17 +166,17 @@ public class BotWebhookController {
         }
     }
 
-    private void handleSkip(Long telegramId, String callbackData, Long chatId, Integer messageId) {
+    private void handleSkip(Long chatId, String callbackData, Integer messageId) {
         Long reminderId = Long.parseLong(callbackData.substring(5));
 
-        medicineHistoryService.markReminderAsSkippedByBot(reminderId, telegramId);
+        System.out.println("❌ handleSkip: reminderId=" + reminderId + ", chatId=" + chatId);
 
-        emitterManager.sendUpdate(telegramId, "history-updated",
+        medicineHistoryService.markReminderAsSkippedByBot(reminderId, chatId);
+
+        emitterManager.sendUpdate(chatId, "history-updated",
                 Map.of("reminderId", reminderId, "action", "skipped"));
 
         editMessageText(chatId, messageId, "❌ Вы пропустили приём.");
-
-        sendSuccessNotification(chatId, "❌ Приём пропущен");
     }
 
     private void answerCallbackQuery(String callbackId, String text) {

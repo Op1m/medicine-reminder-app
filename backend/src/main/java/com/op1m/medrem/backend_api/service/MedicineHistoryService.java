@@ -12,9 +12,9 @@ public interface MedicineHistoryService {
     List<MedicineHistory> getUserMedicineHistory(Long userId);
     List<MedicineHistory> getMedicineHistoryByStatus(Long userId, MedicineStatus status);
     List<MedicineHistory> getHistoryByPeriod(Long userId, OffsetDateTime start, OffsetDateTime end);
-    void markReminderAsTakenByBot(Long reminderId, Long telegramId);
-    MedicineHistory postponeReminder(Long reminderId, Long telegramId, int minutes);
-    void markReminderAsSkippedByBot(Long reminderId, Long telegramId);
+    void markReminderAsTakenByBot(Long reminderId, Long chatId);
+    MedicineHistory postponeReminder(Long reminderId, Long chatId, int minutes);
+    void markReminderAsSkippedByBot(Long reminderId, Long chatId);
     void checkPostponedReminders();
     void checkAndMarkMissedDoses();
 }
