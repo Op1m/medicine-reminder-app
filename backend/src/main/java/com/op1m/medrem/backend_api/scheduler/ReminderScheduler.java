@@ -3,14 +3,15 @@ package com.op1m.medrem.backend_api.scheduler;
 import com.op1m.medrem.backend_api.entity.MedicineHistory;
 import com.op1m.medrem.backend_api.entity.Reminder;
 import com.op1m.medrem.backend_api.service.MedicineHistoryService;
-import com.op1m.medrem.backend_api.service.NotificationService; // ← добавить импорт
+import com.op1m.medrem.backend_api.service.NotificationService;
 import com.op1m.medrem.backend_api.service.ReminderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 @Component
@@ -32,7 +33,7 @@ public class ReminderScheduler {
 
         List<Reminder> dueReminders = reminderService.getDueReminders();
 
-        for(Reminder reminder : dueReminders) {
+        for (Reminder reminder : dueReminders) {
             System.out.println("⏰ Время принять: " +
                     reminder.getMedicine().getName() +
                     " (" + reminder.getMedicine().getDosage() + ")" +
@@ -54,7 +55,7 @@ public class ReminderScheduler {
 
     private MedicineHistory createHistoryRecord(Reminder reminder) {
         try {
-            MedicineHistory history = medicineHistoryService.createScheduleDose(reminder.getId(), LocalDateTime.now());
+            MedicineHistory history = medicineHistoryService.createScheduleDose(reminder.getId(), OffsetDateTime.now(ZoneOffset.UTC));
             System.out.println("✅ Создана запись истории: " + history.getId());
             return history;
         } catch (Exception e) {

@@ -10,7 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 public interface MedicineHistoryRepository extends JpaRepository<MedicineHistory, Long> {
@@ -29,18 +29,28 @@ public interface MedicineHistoryRepository extends JpaRepository<MedicineHistory
     @Query("SELECT mh FROM MedicineHistory mh " +
             "WHERE mh.reminder.user = :user AND mh.scheduledTime BETWEEN :start AND :end " +
             "ORDER BY mh.scheduledTime DESC")
-    List<MedicineHistory> findByUserAndPeriod(@Param("user") User user, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    List<MedicineHistory> findByUserAndPeriod(@Param("user") User user,
+                                              @Param("start") OffsetDateTime start,
+                                              @Param("end") OffsetDateTime end);
 
-    List<MedicineHistory> findByStatusAndScheduledTimeBetween(MedicineStatus status, LocalDateTime start, LocalDateTime end);
-    List<MedicineHistory> findByStatusAndScheduledTimeBefore(MedicineStatus status, LocalDateTime scheduledTime);
-    List<MedicineHistory> findByReminderAndScheduledTimeAfter(Reminder reminder, LocalDateTime time);
+    List<MedicineHistory> findByStatusAndScheduledTimeBetween(MedicineStatus status,
+                                                              OffsetDateTime start,
+                                                              OffsetDateTime end);
+
+    List<MedicineHistory> findByStatusAndScheduledTimeBefore(MedicineStatus status,
+                                                             OffsetDateTime scheduledTime);
+
+    List<MedicineHistory> findByReminderAndScheduledTimeAfter(Reminder reminder,
+                                                              OffsetDateTime time);
 
     @Query("select mh from MedicineHistory mh " +
             "join fetch mh.reminder r " +
             "join fetch r.medicine m " +
             "left join fetch r.user u " +
             "where r.user.id = :userId and mh.scheduledTime between :start and :end")
-    List<MedicineHistory> findByUserIdAndPeriodWithFetch(@Param("userId") Long userId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    List<MedicineHistory> findByUserIdAndPeriodWithFetch(@Param("userId") Long userId,
+                                                         @Param("start") OffsetDateTime start,
+                                                         @Param("end") OffsetDateTime end);
 
     @Modifying
     @Transactional

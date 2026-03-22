@@ -1,7 +1,8 @@
 package com.op1m.medrem.backend_api.entity;
 
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -23,10 +24,10 @@ public class Medicine {
     private boolean isActive = true;
 
     @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 
     @ManyToMany
     @JoinTable(
@@ -36,9 +37,9 @@ public class Medicine {
     )
     private Set<Category> categories = new HashSet<>();
 
-    public Medicine () {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+    public Medicine() {
+        this.createdAt = OffsetDateTime.now(ZoneOffset.UTC);
+        this.updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
     public Medicine(String name, String dosage) {
@@ -47,50 +48,49 @@ public class Medicine {
         this.dosage = dosage;
     }
 
-    public void setName (String name) {
+    public void setName(String name) {
         this.name = name;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
-    public void setDosage (String dosage) {
+    public void setDosage(String dosage) {
         this.dosage = dosage;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
-    public void setDescription (String description) {
+    public void setDescription(String description) {
         this.description = description;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
-    public void setInstructions (String instructions) {
+    public void setInstructions(String instructions) {
         this.instructions = instructions;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
     public void deactivate() {
         this.isActive = false;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
     public void activate() {
         this.isActive = true;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
-    public Long getId () {return  id;}
-    public String getName () {return  name;}
-    public String getDosage () {return dosage;}
-    public String getDescription () {return description;}
-    public String getInstructions () {return instructions;}
-    public boolean isActive () {return isActive;};
-    public LocalDateTime getCreatedAt() {return createdAt;}
-    public LocalDateTime getUpdatedAt() {return  updatedAt;}
+    public Long getId() { return id; }
+    public String getName() { return name; }
+    public String getDosage() { return dosage; }
+    public String getDescription() { return description; }
+    public String getInstructions() { return instructions; }
+    public boolean isActive() { return isActive; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public OffsetDateTime getUpdatedAt() { return updatedAt; }
 
-    protected void setId(Long id) {this.id = id;}
-
-    public void setCreatedAt(LocalDateTime createdAt) {this.createdAt = createdAt;}
-    public  void setUpdatedAt(LocalDateTime updatedAt) {this.updatedAt = updatedAt;}
-    public void setActive(Boolean isActive) {this.isActive = isActive;}
+    protected void setId(Long id) { this.id = id; }
+    public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
+    public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public void setActive(Boolean isActive) { this.isActive = isActive; }
 
     public Set<Category> getCategories() { return categories; }
     public void setCategories(Set<Category> categories) { this.categories = categories; }

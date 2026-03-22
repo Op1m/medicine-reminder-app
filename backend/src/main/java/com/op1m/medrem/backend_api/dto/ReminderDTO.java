@@ -1,7 +1,8 @@
 package com.op1m.medrem.backend_api.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalTime;
-import  java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 public class ReminderDTO {
     private Long id;
@@ -10,14 +11,18 @@ public class ReminderDTO {
     private LocalTime reminderTime;
     private Boolean isActive;
     private String daysOfWeek;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    private OffsetDateTime createdAt;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    private OffsetDateTime updatedAt;
 
     public ReminderDTO() {}
 
     public ReminderDTO(Long id, UserDTO user, MedicineDTO medicine, LocalTime reminderTime,
-                       Boolean isActive, String daysOfWeek, LocalDateTime createdAt,
-                       LocalDateTime updatedAt) {
+                       Boolean isActive, String daysOfWeek,
+                       OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         this.id = id;
         this.user = user;
         this.medicine = medicine;
@@ -46,9 +51,9 @@ public class ReminderDTO {
     public String getDaysOfWeek() { return daysOfWeek; }
     public void setDaysOfWeek(String daysOfWeek) { this.daysOfWeek = daysOfWeek; }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
 
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public OffsetDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

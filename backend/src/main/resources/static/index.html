@@ -1879,11 +1879,7 @@
             let startY = 0;
             let startTime = 0;
             let swiping = false;
-            let didScroll = false;
-
-            let lastTapTime = 0;
-            let tapCount = 0;
-            let tapTimer = null;
+            let isVerticalScroll = false;
 
             card.addEventListener('touchstart', (e) => {
                 const t = e.touches[0];
@@ -1891,32 +1887,8 @@
                 startY = t.clientY;
                 startTime = Date.now();
                 swiping = false;
-                didScroll = false;
+                isVerticalScroll = false;
                 card.style.transition = 'none';
-
-                const currentTime = Date.now();
-                const timeDiff = currentTime - lastTapTime;
-
-                if (timeDiff < 300 && timeDiff > 0) {
-                    if (tapTimer) clearTimeout(tapTimer);
-                    tapCount = 0;
-                    e.preventDefault();
-                    e.stopPropagation();
-                    optimisticPostponeReminder(reminderId, card);
-                    lastTapTime = 0;
-                } else {
-                    tapCount = 1;
-                    lastTapTime = currentTime;
-
-                    tapTimer = setTimeout(() => {
-                        if (tapCount === 1 && !swiping && !didScroll) {
-                            openDetailSheet(reminderId);
-                        }
-                        tapCount = 0;
-                        lastTapTime = 0;
-                    }, 250);
-                }
-
             }, { passive: true });
 
             card.addEventListener('touchmove', (e) => {
@@ -1924,18 +1896,13 @@
                 const dx = t.clientX - startX;
                 const dy = t.clientY - startY;
 
-                if (Math.abs(dy) > 10) {
-                    didScroll = true;
+                if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
+                    isVerticalScroll = true;
+                    return;
                 }
 
                 if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
                     swiping = true;
-                    if (tapTimer) {
-                        clearTimeout(tapTimer);
-                        tapTimer = null;
-                        tapCount = 0;
-                        lastTapTime = 0;
-                    }
                     e.preventDefault();
                     card.style.transform = `translateX(${dx}px)`;
                 }
@@ -1948,18 +1915,14 @@
                 card.style.transition = 'transform 200ms ease';
 
                 if (swiping && Math.abs(dx) > 60) {
-                    if (tapTimer) {
-                        clearTimeout(tapTimer);
-                        tapTimer = null;
-                        tapCount = 0;
-                        lastTapTime = 0;
-                    }
-
                     if (dx > 0) {
                         optimisticMarkTaken(reminderId, card);
                     } else {
                         optimisticMarkSkipped(reminderId, card);
                     }
+                }
+                else if (!swiping && !isVerticalScroll && Math.abs(dx) < 10) {
+                    openDetailSheet(reminderId);
                 }
 
                 card.style.transform = 'translateX(0)';
@@ -1967,13 +1930,6 @@
                     card.style.transition = '';
                 }, 200);
             }, { passive: true });
-
-            card.addEventListener('click', (e) => {
-                if (tapCount === 0) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
-            });
         }
 
         function optimisticMarkTaken(reminderId, card) {
@@ -2317,10 +2273,11 @@
             if (!currentUser) return;
 
             const start = new Date(date);
-            start.setHours(0,0,0,0);
+            start.setHours(0, 0, 0, 0);
+
             const end = new Date(date);
-            end.setDate(end.getDate() + 1);
-            end.setHours(23,59,59,999);
+            end.setHours(23, 59, 59, 999);
+
             const dateKey = date.toISOString().split('T')[0];
 
             const cache = historyCache.get(dateKey);
@@ -2336,6 +2293,9 @@
                     `/medicine-history/user/${currentUser.id}/period?start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`
                 );
                 const data = Array.isArray(history) ? history : [];
+
+                console.log(`📊 Загружена история на ${dateKey}:`, data);
+
                 historyMap.set(dateKey, data);
                 historyCache.set(dateKey, { data, timestamp: now });
                 renderGroupsForDate(date);
@@ -3632,6 +3592,910 @@
         }
     }
 
+    (function(){
+        if (!window) return;
+
+        const PENDING_KEY = 'pillo_pending_history_v1';
+
+        function loadPending() {
+            try {
+                const raw = localStorage.getItem(PENDING_KEY);
+                return raw ? JSON.parse(raw) : {};
+            } catch(e){ return {}; }
+        }
+        function savePending(obj){
+            try { localStorage.setItem(PENDING_KEY, JSON.stringify(obj)); } catch(e){}
+        }
+
+        function addPendingEntry(dateKey, entry) {
+            const pending = loadPending();
+            pending[dateKey] = pending[dateKey] || [];
+            const rid = String(entry.reminder?.id || entry.reminderId || '');
+            const idx = pending[dateKey].findIndex(h => String(h.reminder?.id || h.reminderId || '') === rid);
+            if (idx !== -1) pending[dateKey][idx] = entry;
+            else pending[dateKey].push(entry);
+            savePending(pending);
+        }
+        function removePendingEntry(dateKey, reminderId) {
+            const pending = loadPending();
+            if (!pending[dateKey]) return;
+            pending[dateKey] = pending[dateKey].filter(h => String(h.reminder?.id || h.reminderId || '') !== String(reminderId));
+            if (pending[dateKey].length === 0) delete pending[dateKey];
+            savePending(pending);
+        }
+
+        function mergePendingIntoHistories(dateKey, histories) {
+            const pending = loadPending();
+            const list = pending[dateKey] || [];
+            if (!list || list.length === 0) return histories;
+            const result = Array.isArray(histories) ? histories.slice() : [];
+            list.forEach(p => {
+                const rid = String(p.reminder?.id || p.reminderId || '');
+                const idx = result.findIndex(h => String(h.reminder?.id || '') === rid);
+                if (idx !== -1) {
+                    result[idx] = Object.assign({}, result[idx], p);
+                } else {
+                    const cloned = Object.assign({}, p);
+                    if (!cloned.reminder) cloned.reminder = { id: p.reminderId || p.reminder?.id };
+                    result.push(cloned);
+                }
+            });
+            return result;
+        }
+
+        const origPostpone = window.optimisticPostponeReminder;
+        if (typeof origPostpone === 'function') {
+            window.optimisticPostponeReminder = function(reminderId, card) {
+                try {
+                    const dateKey = (window.selectedDay || new Date()).toISOString().split('T')[0];
+                    const now = new Date();
+                    const postponedTime = new Date(now.getTime() + 10 * 60000);
+                    const entry = {
+                        id: null,
+                        reminder: { id: reminderId },
+                        status: 'postponed',
+                        scheduledTime: postponedTime.toISOString(),
+                        __optimistic: true
+                    };
+                    origPostpone.call(this, reminderId, card);
+                    addPendingEntry(dateKey, entry);
+
+                    setTimeout(() => {
+                        if (window.loadHistoryForDate) {
+                            window.loadHistoryForDate(window.selectedDay || new Date()).then(() => {
+                                const dateKey2 = (window.selectedDay || new Date()).toISOString().split('T')[0];
+                                const histories = window.historyMap && window.historyMap.get(dateKey2) || [];
+                                const found = histories.find(h => h.reminder && String(h.reminder.id) === String(reminderId) && h.id);
+                                if (found) removePendingEntry(dateKey2, reminderId);
+                            }).catch(()=>{});
+                        }
+                    }, 8000);
+
+                } catch(e) { console.error('pillo patch postpone error', e); origPostpone && origPostpone(reminderId, card); }
+            };
+        }
+
+        const origMarkTaken = window.optimisticMarkTaken;
+        if (typeof origMarkTaken === 'function') {
+            window.optimisticMarkTaken = function(reminderId, card) {
+                const dateKey = (window.selectedDay || new Date()).toISOString().split('T')[0];
+                const entry = { id: null, reminder: { id: reminderId }, status: 'taken', scheduledTime: (window.selectedDay || new Date()).toISOString(), __optimistic: true };
+                try {
+                    origMarkTaken.call(this, reminderId, card);
+                    addPendingEntry(dateKey, entry);
+                    setTimeout(() => {
+                        if (window.loadHistoryForDate) {
+                            window.loadHistoryForDate(window.selectedDay || new Date()).then(() => {
+                                const histories = window.historyMap && window.historyMap.get(dateKey) || [];
+                                const found = histories.find(h => h.reminder && String(h.reminder.id) === String(reminderId) && h.id);
+                                if (found) removePendingEntry(dateKey, reminderId);
+                            }).catch(()=>{});
+                        }
+                    }, 6000);
+                } catch(e) { console.error('pillo patch markTaken error', e); origMarkTaken && origMarkTaken(reminderId, card); }
+            };
+        }
+
+        const origMarkSkipped = window.optimisticMarkSkipped;
+        if (typeof origMarkSkipped === 'function') {
+            window.optimisticMarkSkipped = function(reminderId, card) {
+                const dateKey = (window.selectedDay || new Date()).toISOString().split('T')[0];
+                const entry = { id: null, reminder: { id: reminderId }, status: 'skipped', scheduledTime: (window.selectedDay || new Date()).toISOString(), __optimistic: true };
+                try {
+                    origMarkSkipped.call(this, reminderId, card);
+                    addPendingEntry(dateKey, entry);
+                    setTimeout(() => {
+                        if (window.loadHistoryForDate) {
+                            window.loadHistoryForDate(window.selectedDay || new Date()).then(() => {
+                                const histories = window.historyMap && window.historyMap.get(dateKey) || [];
+                                const found = histories.find(h => h.reminder && String(h.reminder.id) === String(reminderId) && h.id);
+                                if (found) removePendingEntry(dateKey, reminderId);
+                            }).catch(()=>{});
+                        }
+                    }, 6000);
+                } catch(e) { console.error('pillo patch markSkipped error', e); origMarkSkipped && origMarkSkipped(reminderId, card); }
+            };
+        }
+
+        const origLoadHistory = window.loadHistoryForDate;
+        if (typeof origLoadHistory === 'function') {
+            window.loadHistoryForDate = async function(date) {
+                const res = await origLoadHistory.call(this, date);
+                try {
+                    const dateKey = (date || new Date()).toISOString().split('T')[0];
+                    const serverHist = window.historyMap && window.historyMap.get(dateKey) || [];
+                    const merged = mergePendingIntoHistories(dateKey, serverHist);
+                    window.historyMap && window.historyMap.set(dateKey, merged);
+                } catch(e) { console.warn('pillo patch: merge pending failed', e); }
+                return res;
+            };
+        }
+
+        const origLoadInitial = window.loadInitialData;
+        if (typeof origLoadInitial === 'function') {
+            window.loadInitialData = async function() {
+                const res = await origLoadInitial.call(this);
+                try {
+                    const pending = loadPending();
+                    if (window.historyMap) {
+                        Object.keys(pending).forEach(dateKey => {
+                            const server = window.historyMap.get(dateKey) || [];
+                            const merged = mergePendingIntoHistories(dateKey, server);
+                            window.historyMap.set(dateKey, merged);
+                        });
+                    }
+                } catch(e) { console.warn('pillo patch: merge initial pending failed', e); }
+                return res;
+            };
+        }
+
+        (function attachSingleTapOpen(){
+            let lastPointer = null;
+            document.addEventListener('pointerup', (e) => {
+                const card = e.target.closest && e.target.closest('.med-card');
+                if (!card) return;
+                if (card.classList.contains('is-swiping') || card.dataset.swipe) return;
+                if (card.dataset._openedRecently) return;
+                card.dataset._openedRecently = '1';
+                setTimeout(() => { delete card.dataset._openedRecently; }, 450);
+                try {
+                    const rid = card.dataset.id || card.getAttribute('data-id');
+                    if (rid) {
+                        if (typeof window.openDetailSheet === 'function') {
+                            window.openDetailSheet(Number(rid));
+                        }
+                    }
+                } catch(e) { console.warn('pillo patch open error', e); }
+            }, { passive: true });
+
+            document.addEventListener('touchend', (e) => {
+                const t = e.changedTouches && e.changedTouches[0];
+                if (!t) return;
+                const el = document.elementFromPoint(t.clientX, t.clientY);
+                const card = el && el.closest && el.closest('.med-card');
+                if (!card) return;
+                if (card.classList.contains('is-swiping') || card.dataset.swipe) return;
+                if (card.dataset._openedRecently) return;
+                card.dataset._openedRecently = '1';
+                setTimeout(() => { delete card.dataset._openedRecently; }, 450);
+                const rid = card.dataset.id || card.getAttribute('data-id');
+                if (rid && typeof window.openDetailSheet === 'function') window.openDetailSheet(Number(rid));
+            }, { passive: true });
+        })();
+
+        console.log('PILLO patch loaded: optimistic persistence + single-tap open (local)');
+    })();
+
+
 </script>
+
+<script>
+
+    (function(){
+        if (!window) return;
+
+        function localDateKey(d) {
+            const dt = new Date(d);
+            const y = dt.getFullYear();
+            const m = String(dt.getMonth() + 1).padStart(2, '0');
+            const dd = String(dt.getDate()).padStart(2, '0');
+            return `${y}-${m}-${dd}`;
+        }
+
+        function buildLocalHistoryMapFromArray(arr) {
+            const map = new Map();
+            (arr || []).forEach(item => {
+                const when = item && (item.scheduledTime || item.when || item.createdAt) || new Date().toISOString();
+                const key = localDateKey(when);
+                if (!map.has(key)) map.set(key, []);
+                map.get(key).push(item);
+            });
+            return map;
+        }
+
+        function normalizeExistingHistoryMap() {
+            try {
+                if (!window.historyMap || !(window.historyMap instanceof Map)) return;
+                const entries = Array.from(window.historyMap.entries());
+                const newMap = new Map();
+                entries.forEach(([k, arr]) => {
+                    (arr || []).forEach(item => {
+                        const itemKey = localDateKey(item.scheduledTime || k);
+                        if (!newMap.has(itemKey)) newMap.set(itemKey, []);
+                        newMap.get(itemKey).push(item);
+                    });
+                });
+                window.historyMap = newMap;
+            } catch (e) {
+                console.warn('localDateKey: normalizeExistingHistoryMap failed', e);
+            }
+        }
+
+        const origLoadInitialData = window.loadInitialData;
+        if (typeof origLoadInitialData === 'function') {
+            window.loadInitialData = async function(...args) {
+                const res = await origLoadInitialData.apply(this, args);
+                try {
+                    normalizeExistingHistoryMap();
+                    if (typeof window.renderGroupsForDate === 'function' && window.selectedDay) {
+                        window.renderGroupsForDate(window.selectedDay);
+                    }
+                } catch(e){ console.warn('localDateKey: loadInitial patch failed', e); }
+                return res;
+            };
+        }
+
+        const origLoadHistoryForDate = window.loadHistoryForDate;
+        if (typeof origLoadHistoryForDate === 'function') {
+            window.loadHistoryForDate = async function(date, ...rest) {
+                const res = await origLoadHistoryForDate.apply(this, [date, ...rest]);
+                try {
+                    const localKey = localDateKey(date || new Date());
+                    const isoKey = (date || new Date()).toISOString().split('T')[0];
+                    const existing = (window.historyMap && (window.historyMap.get(localKey) || window.historyMap.get(isoKey))) || [];
+                    window.historyMap = window.historyMap || new Map();
+                    window.historyMap.set(localKey, existing.slice());
+                    if (typeof window.mergePendingIntoHistories === 'function') {
+                        const merged = window.mergePendingIntoHistories(localKey, existing);
+                        window.historyMap.set(localKey, merged);
+                    } else {
+                        try {
+                            const raw = localStorage.getItem('pillo_pending_history_v1');
+                            if (raw) {
+                                const pending = JSON.parse(raw);
+                                const list = pending[localKey] || [];
+                                if (list.length) {
+                                    const combined = existing.slice();
+                                    list.forEach(p => {
+                                        const rid = String(p.reminder?.id || p.reminderId || '');
+                                        const idx = combined.findIndex(h => String(h.reminder?.id || h.reminderId || '') === rid);
+                                        if (idx !== -1) combined[idx] = Object.assign({}, combined[idx], p);
+                                        else combined.push(p);
+                                    });
+                                    window.historyMap.set(localKey, combined);
+                                }
+                            }
+                        } catch(e){}
+                    }
+                    if (typeof window.renderGroupsForDate === 'function') {
+                        window.renderGroupsForDate(date || new Date());
+                    }
+                } catch(e) { console.warn('localDateKey: post-loadHistory patch failed', e); }
+                return res;
+            };
+        }
+
+        function patchOptimistic(fnName) {
+            const orig = window[fnName];
+            if (typeof orig !== 'function') return;
+            window[fnName] = function(reminderId, card) {
+                const localKey = localDateKey(window.selectedDay || new Date());
+                const res = orig.apply(this, [reminderId, card]);
+                try {
+                    if (!window.historyMap) window.historyMap = new Map();
+                    const isoKey = (window.selectedDay || new Date()).toISOString().split('T')[0];
+                    const maybe = window.historyMap.get(localKey) || window.historyMap.get(isoKey) || [];
+                    window.historyMap.set(localKey, maybe.slice());
+                    localStorage.setItem('lastHistoryUpdate', Date.now().toString());
+                } catch(e) { console.warn('localDateKey: optimistic patch error', e); }
+                return res;
+            };
+        }
+        ['optimisticMarkTaken', 'optimisticMarkSkipped', 'optimisticPostponeReminder'].forEach(patchOptimistic);
+
+        try { normalizeExistingHistoryMap(); } catch(e){}
+        console.log('localDateKey patch loaded — unified day-keys (local).');
+    })();
+</script>
+
+<script>
+    (function(){
+        if (!window) return;
+
+        function pad(n){ return String(n).padStart(2,'0'); }
+
+        function canonicalDateKey(input){
+            if (!input && input !== 0) input = new Date();
+            if (input instanceof Date){
+                const y = input.getFullYear(), m = input.getMonth(), d = input.getDate();
+                const utcMid = new Date(Date.UTC(y, m, d));
+                return utcMid.toISOString().split('T')[0];
+            }
+            if (typeof input === 'string'){
+                const s = input.trim();
+                if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+                const dt = new Date(s);
+                if (isNaN(dt)) {
+                    const parsed = new Date(s + 'T00:00:00');
+                    if (!isNaN(parsed)) return canonicalDateKey(parsed);
+                    return canonicalDateKey(new Date());
+                }
+                const y = dt.getUTCFullYear(), m = dt.getUTCMonth()+1, d = dt.getUTCDate();
+                return `${y}-${pad(m)}-${pad(d)}`;
+            }
+            return canonicalDateKey(new Date());
+        }
+
+        const PENDING_KEY = 'pillo_pending_history_v1';
+
+        function loadPendingRaw(){
+            try{
+                const raw = localStorage.getItem(PENDING_KEY);
+                return raw ? JSON.parse(raw) : {};
+            }catch(e){ return {}; }
+        }
+
+        function loadPending(){
+            const raw = loadPendingRaw();
+            const migrated = {};
+            Object.keys(raw).forEach(k => {
+                let newKey;
+                if (/^\d{4}-\d{2}-\d{2}$/.test(k)) {
+                    const parts = k.split('-').map(Number);
+                    const localDate = new Date(parts[0], parts[1]-1, parts[2]);
+                    newKey = canonicalDateKey(localDate);
+                } else {
+                    newKey = canonicalDateKey(k);
+                }
+                migrated[newKey] = migrated[newKey] || [];
+                (raw[k] || []).forEach(item => migrated[newKey].push(item));
+            });
+            return migrated;
+        }
+
+        function savePending(obj){
+            try { localStorage.setItem(PENDING_KEY, JSON.stringify(obj)); } catch(e){ }
+        }
+
+        function addPendingEntryForKey(dateKey, entry){
+            const pending = loadPending();
+            pending[dateKey] = pending[dateKey] || [];
+            const rid = String(entry.reminder?.id || entry.reminderId || '');
+            const idx = pending[dateKey].findIndex(h => String(h.reminder?.id || h.reminderId || '') === rid);
+            if (idx !== -1) pending[dateKey][idx] = entry;
+            else pending[dateKey].push(entry);
+            savePending(pending);
+        }
+
+        function removePendingEntryForKey(dateKey, reminderId){
+            const pending = loadPending();
+            if (!pending[dateKey]) return;
+            pending[dateKey] = pending[dateKey].filter(h => String(h.reminder?.id || h.reminderId || '') !== String(reminderId));
+            if (pending[dateKey].length === 0) delete pending[dateKey];
+            savePending(pending);
+        }
+
+        function mergePendingIntoHistories(dateKey, histories){
+            const pending = loadPending();
+            const list = pending[dateKey] || [];
+            if (!Array.isArray(histories)) histories = [];
+            const result = histories.slice();
+            list.forEach(p => {
+                const rid = String(p.reminder?.id || p.reminderId || '');
+                const idx = result.findIndex(h => String(h.reminder?.id || h.reminderId || '') === rid);
+                if (idx !== -1) result[idx] = Object.assign({}, result[idx], p);
+                else result.push(Object.assign({}, p));
+            });
+            return result;
+        }
+
+        const origLoadInitial = window.loadInitialData;
+        if (typeof origLoadInitial === 'function'){
+            window.loadInitialData = async function(...args){
+                const res = await origLoadInitial.apply(this, args);
+                try {
+                    if (window.historyMap && window.historyMap instanceof Map){
+                        const entries = Array.from(window.historyMap.entries());
+                        const newMap = new Map();
+                        entries.forEach(([k, arr]) => {
+                            (arr || []).forEach(item => {
+                                const keyFromItem = item && (item.scheduledTime || item.when || item.createdAt);
+                                const key = keyFromItem ? canonicalDateKey(keyFromItem) : canonicalDateKey(k);
+                                if (!newMap.has(key)) newMap.set(key, []);
+                                newMap.get(key).push(item);
+                            });
+                        });
+                        window.historyMap = newMap;
+                    }
+                    const pending = loadPending();
+                    if (window.selectedDay){
+                        const ck = canonicalDateKey(window.selectedDay);
+                        const serverHist = (window.historyMap && window.historyMap.get(ck)) || [];
+                        const merged = mergePendingIntoHistories(ck, serverHist);
+                        if (window.historyMap) window.historyMap.set(ck, merged);
+                    }
+                    if (typeof window.renderGroupsForDate === 'function' && window.selectedDay) {
+                        window.renderGroupsForDate(window.selectedDay);
+                    }
+                } catch(e){ console.warn('canonicalDateKey: loadInitialData patch failed', e); }
+                console.log('canonicalDateKey: loadInitialData finished');
+                return res;
+            };
+        }
+
+        const origLoadHistory = window.loadHistoryForDate;
+        if (typeof origLoadHistory === 'function'){
+            window.loadHistoryForDate = async function(date, ...rest){
+                const res = await origLoadHistory.apply(this, [date, ...rest]);
+                try {
+                    const ck = canonicalDateKey(date || new Date());
+                    window.historyMap = window.historyMap || new Map();
+                    const isoKey = (date || new Date()).toISOString().split('T')[0];
+                    const serverArr = window.historyMap.get(ck) || window.historyMap.get(isoKey) || [];
+                    const merged = mergePendingIntoHistories(ck, serverArr);
+                    window.historyMap.set(ck, merged);
+                    if (typeof window.renderGroupsForDate === 'function') window.renderGroupsForDate(date || new Date());
+                    const pending = loadPending();
+                    (window.historyMap.get(ck) || []).forEach(h => {
+                        if (h.id && h.reminder && String(h.reminder.id)){
+                            removePendingEntryForKey(ck, String(h.reminder.id));
+                        }
+                    });
+                } catch(e){ console.warn('canonicalDateKey: loadHistoryForDate patch failed', e); }
+                return res;
+            };
+        }
+
+        function patchOptimisticFn(fnName){
+            const orig = window[fnName];
+            if (typeof orig !== 'function') return;
+            window[fnName] = function(reminderId, card){
+                const ck = canonicalDateKey(window.selectedDay || new Date());
+                let ret;
+                try { ret = orig.apply(this, [reminderId, card]); } catch(e){ console.warn(fnName, 'orig failed', e); }
+                try {
+                    const now = new Date();
+                    const entry = {
+                        id: null,
+                        reminder: { id: reminderId },
+                        status: fnName === 'optimisticMarkTaken' ? 'taken' : (fnName === 'optimisticMarkSkipped' ? 'skipped' : 'postponed'),
+                        scheduledTime: (window.selectedDay ? new Date(Date.UTC(window.selectedDay.getFullYear(), window.selectedDay.getMonth(), window.selectedDay.getDate())).toISOString() : now.toISOString()),
+                        __optimistic: true
+                    };
+                    addPendingEntryForKey(ck, entry);
+                    window.historyMap = window.historyMap || new Map();
+                    const cur = window.historyMap.get(ck) || [];
+                    const idx = cur.findIndex(h => String(h.reminder?.id || '') === String(reminderId));
+                    if (idx !== -1) cur[idx] = Object.assign({}, cur[idx], entry);
+                    else cur.push(entry);
+                    window.historyMap.set(ck, cur);
+                    if (typeof window.renderGroupsForDate === 'function') window.renderGroupsForDate(window.selectedDay || new Date());
+                    setTimeout(() => {
+                        if (typeof window.loadHistoryForDate === 'function') {
+                            window.loadHistoryForDate(window.selectedDay || new Date()).catch(()=>{});
+                        }
+                    }, 5000);
+                } catch(e){ console.warn(fnName, 'optimistic patch failed', e); }
+                return ret;
+            };
+        }
+        ['optimisticMarkTaken','optimisticMarkSkipped','optimisticPostponeReminder'].forEach(patchOptimisticFn);
+
+        try {
+            if (window.historyMap && window.historyMap instanceof Map){
+                const entries = Array.from(window.historyMap.entries());
+                const newMap = new Map();
+                entries.forEach(([k, arr]) => {
+                    (arr || []).forEach(item => {
+                        const keyFromItem = item && (item.scheduledTime || item.when || item.createdAt);
+                        const key = keyFromItem ? canonicalDateKey(keyFromItem) : canonicalDateKey(k);
+                        if (!newMap.has(key)) newMap.set(key, []);
+                        newMap.get(key).push(item);
+                    });
+                });
+                window.historyMap = newMap;
+            }
+            const pending = loadPending();
+            if (window.selectedDay){
+                const ck = canonicalDateKey(window.selectedDay);
+                const serverArr = window.historyMap && window.historyMap.get(ck) || [];
+                window.historyMap.set(ck, mergePendingIntoHistories(ck, serverArr));
+                if (typeof window.renderGroupsForDate === 'function') window.renderGroupsForDate(window.selectedDay);
+            }
+        } catch(e){}
+        console.log('canonicalDateKey patch loaded — UTC vs local day normalized.');
+    })();
+</script>
+
+<script>
+    (function(){
+        const SERVER_TZ_OFFSET = '+07:00';
+
+        function pad(n){ return String(n).padStart(2,'0'); }
+
+        function parseServerTimestampToDate(s) {
+            if (!s) return new Date();
+            const str = String(s).trim();
+            if (/[zZ]$/.test(str) || /[+-]\d{2}(:\d{2})?$/.test(str)) {
+                return new Date(str);
+            }
+            if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+                return new Date(str + 'T00:00:00' + SERVER_TZ_OFFSET);
+            }
+            return new Date(str + SERVER_TZ_OFFSET);
+        }
+
+        function canonicalDateKey(input){
+            if (!input && input !== 0) input = new Date();
+            if (input instanceof Date){
+                const y = input.getUTCFullYear();
+                const m = input.getUTCMonth() + 1;
+                const d = input.getUTCDate();
+                return `${y}-${pad(m)}-${pad(d)}`;
+            }
+            if (typeof input === 'string'){
+                const s = input.trim();
+                if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+                const dt = parseServerTimestampToDate(s);
+                const y = dt.getUTCFullYear();
+                const m = dt.getUTCMonth() + 1;
+                const d = dt.getUTCDate();
+                return `${y}-${pad(m)}-${pad(d)}`;
+            }
+            return canonicalDateKey(new Date());
+        }
+        window.canonicalDateKey = canonicalDateKey;
+        window._pillo_server_tz_offset = SERVER_TZ_OFFSET;
+        console.log('pillo: canonicalDateKey loaded (frontend fallback, server TZ:', SERVER_TZ_OFFSET, ')');
+    })();
+</script>
+
+<script>
+    (function(){
+        if (!window) return;
+
+        const SERVER_TZ_OFFSET = '+07:00';
+        const SERVER_OFFSET_MINUTES = 7 * 60;
+        const SERVER_OFFSET_MS = SERVER_OFFSET_MINUTES * 60 * 1000;
+
+        function pad(n){ return String(n).padStart(2,'0'); }
+        function fmtUTCDateKey(d){
+            return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`;
+        }
+
+        function parseServerTimestamp(s){
+            if (!s) return new Date();
+            const str = String(s).trim();
+            if (/[zZ]$/.test(str) || /[+-]\d{2}(:\d{2})?$/.test(str)) {
+                return new Date(str);
+            }
+            return new Date(str + SERVER_TZ_OFFSET);
+        }
+
+        function serverKeyFromTimestamp(ts){
+            try {
+                const dt = parseServerTimestamp(ts);
+                const serverLocal = new Date(dt.getTime() + SERVER_OFFSET_MS);
+                return fmtUTCDateKey(serverLocal);
+            } catch (e) {
+                return fmtUTCDateKey(new Date(Date.now() + SERVER_OFFSET_MS));
+            }
+        }
+
+        function serverKeyFromDate(dateObj){
+            const dt = (dateObj instanceof Date) ? dateObj : new Date(dateObj || Date.now());
+            const serverLocal = new Date(dt.getTime() + SERVER_OFFSET_MS);
+            return fmtUTCDateKey(serverLocal);
+        }
+
+        const PENDING_KEY = 'pillo_pending_history_v1';
+        function loadPendingRaw(){
+            try { return JSON.parse(localStorage.getItem(PENDING_KEY) || '{}'); } catch(e){ return {}; }
+        }
+        function savePendingRaw(obj){
+            try { localStorage.setItem(PENDING_KEY, JSON.stringify(obj)); } catch(e) {}
+        }
+        function mergePendingForKey(key, arr){
+            const pending = loadPendingRaw();
+            const list = pending[key] || [];
+            const res = Array.isArray(arr) ? arr.slice() : [];
+            list.forEach(p => {
+                const rid = String(p.reminder?.id || p.reminderId || '');
+                const idx = res.findIndex(h => String(h.reminder?.id || h.reminderId || '') === rid);
+                if (idx !== -1) res[idx] = Object.assign({}, res[idx], p);
+                else res.push(Object.assign({}, p));
+            });
+            return res;
+        }
+
+        const origLoadHistory = window.loadHistoryForDate;
+        if (typeof origLoadHistory === 'function'){
+            window.loadHistoryForDate = async function(date, ...rest){
+                const res = await origLoadHistory.apply(this, [date, ...rest]);
+                try {
+                    const origKey = (date instanceof Date ? date : new Date(date)).toISOString().split('T')[0];
+                    const maybeArr = (window.historyMap && window.historyMap.get(origKey)) || [];
+                    const grouped = {};
+                    (maybeArr || []).forEach(item => {
+                        const sk = serverKeyFromTimestamp(item.scheduledTime || item.when || item.createdAt || origKey);
+                        grouped[sk] = grouped[sk] || [];
+                        grouped[sk].push(item);
+                    });
+                    if (!window.historyMap) window.historyMap = new Map();
+                    Object.keys(grouped).forEach(k => {
+                        const merged = mergePendingForKey(k, grouped[k]);
+                        window.historyMap.set(k, merged);
+                        try {
+                            if (window.historyCache && window.historyCache instanceof Map) {
+                                window.historyCache.set(k, { data: merged, timestamp: Date.now() });
+                            }
+                        } catch(e){}
+                    });
+                    const serverKeyForRequested = serverKeyFromDate(date || new Date());
+                    const dayArr = window.historyMap.get(serverKeyForRequested) || [];
+                    if (typeof window.renderGroupsForDate === 'function'){
+                        window.renderGroupsForDate(date || new Date());
+                    }
+                    const current = window.historyMap.get(serverKeyForRequested) || [];
+                    current.forEach(h => {
+                        if (h.id && h.reminder && String(h.reminder.id)) {
+                            const pending = loadPendingRaw();
+                            if (pending[serverKeyForRequested]) {
+                                const newList = pending[serverKeyForRequested].filter(p => String(p.reminder?.id || p.reminderId || '') !== String(h.reminder.id));
+                                if (newList.length) pending[serverKeyForRequested] = newList;
+                                else delete pending[serverKeyForRequested];
+                                savePendingRaw(pending);
+                            }
+                        }
+                    });
+                } catch(e){
+                    console.warn('server-key patch: loadHistory postprocess failed', e);
+                }
+                return res;
+            };
+        }
+
+        if (typeof window.getStatusForReminderOnDate === 'function'){
+            const origGetStatus = window.getStatusForReminderOnDate;
+            window.getStatusForReminderOnDate = function(reminder, date){
+                try {
+                    const key = serverKeyFromDate(date || new Date());
+                    const histories = (window.historyMap && window.historyMap.get(key)) || [];
+                    const history = histories.find(h => h.reminder && String(h.reminder.id) === String(reminder.id));
+                    if (!history) return 'pending';
+                    return (history.status || 'pending').toLowerCase();
+                } catch(e){
+                    try { return origGetStatus.apply(this, [reminder, date]); } catch(e2){ return 'pending'; }
+                }
+            };
+        }
+
+        function patchOptimistic(name){
+            const orig = window[name];
+            if (typeof orig !== 'function') return;
+            window[name] = function(reminderId, card){
+                const key = serverKeyFromDate(window.selectedDay || new Date());
+                const r = orig.apply(this, [reminderId, card]);
+                try {
+                    const entry = {
+                        id: null,
+                        reminder: { id: reminderId },
+                        status: name === 'optimisticMarkTaken' ? 'taken' : (name === 'optimisticMarkSkipped' ? 'skipped' : 'postponed'),
+                        scheduledTime: (window.selectedDay ? new Date(window.selectedDay.getFullYear(), window.selectedDay.getMonth(), window.selectedDay.getDate()).toISOString() : new Date().toISOString()),
+                        __optimistic: true
+                    };
+                    const pending = loadPendingRaw();
+                    pending[key] = pending[key] || [];
+                    const rid = String(reminderId);
+                    const idx = pending[key].findIndex(h => String(h.reminder?.id || h.reminderId || '') === rid);
+                    if (idx !== -1) pending[key][idx] = entry; else pending[key].push(entry);
+                    savePendingRaw(pending);
+                    window.historyMap = window.historyMap || new Map();
+                    const cur = window.historyMap.get(key) || [];
+                    const i = cur.findIndex(h => String(h.reminder?.id || '') === rid);
+                    if (i !== -1) cur[i] = Object.assign({}, cur[i], entry); else cur.push(entry);
+                    window.historyMap.set(key, cur);
+                    if (typeof window.renderGroupsForDate === 'function') window.renderGroupsForDate(window.selectedDay || new Date());
+                    setTimeout(()=> { if (typeof window.loadHistoryForDate === 'function') window.loadHistoryForDate(window.selectedDay || new Date()).catch(()=>{}); }, 4000);
+                } catch(e){ console.warn('patch optimistic write failed', e); }
+                return r;
+            };
+        }
+        ['optimisticMarkTaken','optimisticMarkSkipped','optimisticPostponeReminder'].forEach(patchOptimistic);
+
+        console.log('pillo server-day patch loaded (server TZ offset %s).', SERVER_TZ_OFFSET);
+    })();
+</script>
+
+<script>
+    (function() {
+        console.log('🕒 PILLO: Устанавливаем единый UTC-ключ для всех дат');
+        
+        const SERVER_OFFSET_HOURS = 7;
+        const SERVER_OFFSET_MS = SERVER_OFFSET_HOURS * 60 * 60 * 1000;
+
+        function getServerDateKey(date) {
+            if (!date) date = new Date();
+            const d = new Date(date);
+
+            const serverTime = d.getTime() + SERVER_OFFSET_MS;
+            const serverDate = new Date(serverTime);
+            const year = serverDate.getUTCFullYear();
+            const month = String(serverDate.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(serverDate.getUTCDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        const originalLoadHistory = window.loadHistoryForDate;
+        const originalGetStatus = window.getStatusForReminderOnDate;
+        const originalMarkTaken = window.markReminderAsTaken;
+        const originalMarkSkipped = window.markReminderAsSkipped;
+        const originalPostpone = window.optimisticPostponeReminder;
+
+        if (typeof originalLoadHistory === 'function') {
+            window.loadHistoryForDate = async function(date) {
+                if (!currentUser) return;
+
+                const serverKey = getServerDateKey(date);
+
+                const start = new Date(date);
+                start.setHours(0,0,0,0);
+                const end = new Date(date);
+                end.setDate(end.getDate() + 1);
+                end.setHours(23,59,59,999);
+
+                try {
+                    const response = await apiFetch(
+                        `/medicine-history/user/${currentUser.id}/period?start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`
+                    );
+
+                    const data = Array.isArray(response) ? response.map(h => ({
+                        ...h,
+                        reminder: h.reminder ? { ...h.reminder } : null
+                    })) : [];
+
+                    historyMap.set(serverKey, data);
+                    historyCache.set(serverKey, { data, timestamp: Date.now() });
+
+                    const stored = localStorage.getItem(`historyLocal_${serverKey}`);
+                    if (stored) {
+                        try {
+                            const localData = JSON.parse(stored).map(h => ({
+                                ...h,
+                                reminder: h.reminder ? { ...h.reminder } : null
+                            }));
+                            const merged = [...data];
+                            localData.forEach(local => {
+                                const existing = merged.find(m =>
+                                    m.reminder && local.reminder &&
+                                    String(m.reminder.id) === String(local.reminder.id)
+                                );
+                                if (existing) {
+                                    Object.assign(existing, local);
+                                } else {
+                                    merged.push(local);
+                                }
+                            });
+                            historyMap.set(serverKey, merged);
+                        } catch (e) {}
+                    }
+
+                    saveLocalHistory(serverKey);
+                    renderGroupsForDate(date);
+
+                } catch (err) {
+                    console.warn('Ошибка загрузки истории', err);
+                    const stored = localStorage.getItem(`historyLocal_${serverKey}`);
+                    if (stored) {
+                        try {
+                            const data = JSON.parse(stored).map(h => ({
+                                ...h,
+                                reminder: h.reminder ? { ...h.reminder } : null
+                            }));
+                            historyMap.set(serverKey, data);
+                            renderGroupsForDate(date);
+                        } catch (e) {}
+                    }
+                }
+            };
+        }
+
+        if (typeof originalGetStatus === 'function') {
+            window.getStatusForReminderOnDate = function(reminder, date) {
+                const serverKey = getServerDateKey(date);
+                const histories = historyMap.get(serverKey) || [];
+                const history = histories.find(h =>
+                    h.reminder && String(h.reminder.id) === String(reminder.id)
+                );
+                return history ? (history.status || 'pending').toLowerCase() : 'pending';
+            };
+        }
+
+        function patchOptimisticFunction(name) {
+            const original = window[name];
+            if (typeof original !== 'function') return;
+
+            window[name] = function(reminderId, card) {
+                const serverKey = getServerDateKey(selectedDay || new Date());
+                const result = original.apply(this, [reminderId, card]);
+
+                let histories = historyMap.get(serverKey) || [];
+                let historyEntry = histories.find(h =>
+                    h.reminder && String(h.reminder.id) === String(reminderId)
+                );
+
+                if (!historyEntry) {
+                    historyEntry = {
+                        id: null,
+                        reminder: { id: reminderId },
+                        status: name === 'optimisticMarkTaken' ? 'taken' :
+                            (name === 'optimisticMarkSkipped' ? 'skipped' : 'postponed'),
+                        scheduledTime: (selectedDay || new Date()).toISOString()
+                    };
+                    histories.push(historyEntry);
+                    historyMap.set(serverKey, histories);
+                } else {
+                    historyEntry.status = name === 'optimisticMarkTaken' ? 'taken' :
+                        (name === 'optimisticMarkSkipped' ? 'skipped' : 'postponed');
+                    historyMap.set(serverKey, histories);
+                }
+
+                saveLocalHistory(serverKey);
+
+                return result;
+            };
+        }
+
+        patchOptimisticFunction('optimisticMarkTaken');
+        patchOptimisticFunction('optimisticMarkSkipped');
+        patchOptimisticFunction('optimisticPostponeReminder');
+
+        const originalSaveLocal = window.saveLocalHistory;
+        if (typeof originalSaveLocal === 'function') {
+            window.saveLocalHistory = function(dateKey) {
+                try {
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+                        const histories = historyMap.get(dateKey) || [];
+                        localStorage.setItem(`historyLocal_${dateKey}`, JSON.stringify(histories));
+                    } else {
+                        const serverKey = getServerDateKey(new Date(dateKey));
+                        const histories = historyMap.get(serverKey) || [];
+                        localStorage.setItem(`historyLocal_${serverKey}`, JSON.stringify(histories));
+                    }
+                } catch (e) {
+                    console.warn('Ошибка сохранения локальной истории', e);
+                }
+            };
+        }
+
+        try {
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('historyLocal_')) {
+                    const dateStr = key.replace('historyLocal_', '');
+                    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                        keysToRemove.push(key);
+                    }
+                }
+            }
+            keysToRemove.forEach(key => localStorage.removeItem(key));
+            console.log('🧹 Очищено старых ключей:', keysToRemove.length);
+        } catch (e) {}
+
+        console.log('✅ PILLO: Патч часового пояса применён');
+    })();
+</script>
+
 </body>
 </html>

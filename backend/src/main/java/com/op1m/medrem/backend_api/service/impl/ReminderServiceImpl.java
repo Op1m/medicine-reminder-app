@@ -17,8 +17,9 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -154,7 +155,7 @@ public class ReminderServiceImpl implements ReminderService {
 
     @Override
     public boolean shouldNotifyNow(Reminder reminder) {
-        LocalDateTime now = LocalDateTime.now();
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         LocalTime rt = reminder.getReminderTime();
         boolean timeMatches = now.getHour() == rt.getHour() && now.getMinute() == rt.getMinute();
         boolean dayMatches = checkDayOfWeek(reminder, now);
@@ -162,7 +163,7 @@ public class ReminderServiceImpl implements ReminderService {
         return timeMatches && dayMatches;
     }
 
-    private boolean checkDayOfWeek(Reminder reminder, LocalDateTime now) {
+    private boolean checkDayOfWeek(Reminder reminder, OffsetDateTime now) {
         String daysOfWeek = reminder.getDaysOfWeek();
         if (daysOfWeek == null || daysOfWeek.equals("everyday")) return true;
         int currentDay = now.getDayOfWeek().getValue();

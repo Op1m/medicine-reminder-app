@@ -1,22 +1,27 @@
 package com.op1m.medrem.backend_api.dto;
 
-import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import java.time.OffsetDateTime;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class CategoryDTO {
     private Long id;
     private String name;
     private String description;
     private Boolean isActive;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    private OffsetDateTime createdAt;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    private OffsetDateTime updatedAt;
+
     private Set<MedicineDTO> medicines;
 
     public CategoryDTO() {}
 
     public CategoryDTO(Long id, String name, String description, Boolean isActive,
-                       LocalDateTime createdAt, LocalDateTime updatedAt, Set<MedicineDTO> medicines) {
+                       OffsetDateTime createdAt, OffsetDateTime updatedAt, Set<MedicineDTO> medicines) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -38,11 +43,11 @@ public class CategoryDTO {
     public Boolean getIsActive() { return isActive; }
     public void setIsActive(Boolean isActive) { this.isActive = isActive; }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
 
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public OffsetDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
 
     public Set<MedicineDTO> getMedicines() { return medicines; }
     public void setMedicines(Set<MedicineDTO> medicines) { this.medicines = medicines; }

@@ -1,10 +1,10 @@
 package com.op1m.medrem.backend_api.entity;
 
-import com.op1m.medrem.backend_api.MedicineReminderApiApplication;
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
-import  java.util.ArrayList;
-import  java.util.List;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "users")
@@ -29,10 +29,10 @@ public class User {
     private Long telegramChatId;
 
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 
     @Column(name = "is_active")
     private Boolean isActive = true;
@@ -47,101 +47,54 @@ public class User {
     private String languageCode;
 
     @Column(name = "last_login")
-    private LocalDateTime lastLogin;
+    private OffsetDateTime lastLogin;
 
-
-    @OneToMany(
-            mappedBy = "user",
-            cascade = CascadeType.ALL,
-            fetch = FetchType.LAZY
-    )
-
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Reminder> reminders = new ArrayList<>();
 
-    @PreUpdate
-    public void preUpdate () {
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    @Override
-    public String toString() {
-        return "User{id=" + id + ", username='" + username + "', email='" + email + "'}";
-    }
-
     public User() {
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = OffsetDateTime.now(ZoneOffset.UTC);
+        this.updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
     public User(String username, String password, String email) {
+        this();
         this.username = username;
         this.password = password;
         this.email = email;
     }
 
-    @PrePersist
-    protected void onCreate() {
-        if (this.createdAt == null) {
-            this.createdAt = LocalDateTime.now();
-        }
-        if (this.updatedAt == null) {
-            this.updatedAt = LocalDateTime.now();
-        }
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
-    public Long getId () {
-        return id;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public void setId (Long id) {
-        this.id = id;
-    }
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
 
-    public String getUsername () {
-        return username;
-    }
+    public String getFirstName() { return first_name; }
+    public void setFirstName(String first_name) { this.first_name = first_name; }
 
-    public void setUsername (String username) {
-        this.username = username;
-    }
+    public String getLastName() { return last_name; }
+    public void setLastName(String last_name) { this.last_name = last_name; }
 
-    public String getFirstName () {
-        return first_name;
-    }
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
 
-    public void setFirstName (String first_name) {
-        this.first_name = first_name;
-    }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
 
-    public String getLastName () {return last_name; }
+    public Long getTelegramChatId() { return telegramChatId; }
+    public void setTelegramChatId(Long telegramChatId) { this.telegramChatId = telegramChatId; }
 
-    public void setLastName (String last_name) {
-        this.last_name = last_name;
-    }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
 
-    public String getPassword () {
-        return password;
-    }
-
-    public void setPassword (String password) {
-        this.password = password;
-    }
-
-    public String getEmail () {
-        return email;
-    }
-
-    public void setEmail (String email) {
-        this.email = email;
-    }
-
-    public Long getTelegramChatId () {return telegramChatId;}
-
-    public void setTelegramChatId (Long telegramChatId) {this.telegramChatId = telegramChatId;}
-
-    public LocalDateTime getCreatedAt () {return createdAt;}
-    public LocalDateTime getUpdatedAt () {return updatedAt;}
-    public void setCreatedAt (LocalDateTime createdAt) {this.createdAt = createdAt;}
-    public void setUpdatedAt (LocalDateTime updatedAt) {this.updatedAt = updatedAt;}
+    public OffsetDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
 
     public Boolean getActive() { return isActive; }
     public void setActive(Boolean active) { isActive = active; }
@@ -155,6 +108,6 @@ public class User {
     public String getLanguageCode() { return languageCode; }
     public void setLanguageCode(String languageCode) { this.languageCode = languageCode; }
 
-    public LocalDateTime getLastLogin() { return lastLogin; }
-    public void setLastLogin(LocalDateTime lastLogin) { this.lastLogin = lastLogin; }
+    public OffsetDateTime getLastLogin() { return lastLogin; }
+    public void setLastLogin(OffsetDateTime lastLogin) { this.lastLogin = lastLogin; }
 }

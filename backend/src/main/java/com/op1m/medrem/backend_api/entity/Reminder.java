@@ -1,9 +1,9 @@
 package com.op1m.medrem.backend_api.entity;
 
 import jakarta.persistence.*;
-
 import java.time.LocalTime;
-import  java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "reminders")
@@ -30,14 +30,14 @@ public class Reminder {
     private String daysOfWeek = "everyday";
 
     @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 
     public Reminder() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        this.createdAt = OffsetDateTime.now(ZoneOffset.UTC);
+        this.updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
     public Reminder(User user, Medicine medicine, LocalTime reminderTime) {
@@ -47,33 +47,33 @@ public class Reminder {
         this.reminderTime = reminderTime;
     }
 
-    public void setReminderTime (LocalTime reminderTime) {
+    public void setReminderTime(LocalTime reminderTime) {
         this.reminderTime = reminderTime;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
-    public void setActive (Boolean isActive) {
+    public void setActive(Boolean isActive) {
         this.isActive = isActive;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
-    public void setDaysOfWeek (String daysOfWeek) {
+    public void setDaysOfWeek(String daysOfWeek) {
         this.daysOfWeek = daysOfWeek;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
-    public Long getId () {return id;}
-    public User getUser () {return user;}
-    public Medicine getMedicine () {return medicine;}
-    public LocalTime getReminderTime () {return reminderTime;}
-    public Boolean getIsActive () {return isActive;}
-    public String getDaysOfWeek () {return daysOfWeek;}
-    public LocalDateTime getCreatedAt () {return createdAt;}
-    public LocalDateTime getUpdatedAt () {return updatedAt;}
+    public Long getId() { return id; }
+    public User getUser() { return user; }
+    public Medicine getMedicine() { return medicine; }
+    public LocalTime getReminderTime() { return reminderTime; }
+    public Boolean getIsActive() { return isActive; }
+    public String getDaysOfWeek() { return daysOfWeek; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public OffsetDateTime getUpdatedAt() { return updatedAt; }
 
-    public void setId (Long id) {this.id = id;}
-    public void setUser (User user) {this.user = user;}
-    public void setMedicine (Medicine medicine) {this.medicine = medicine;}
-    public void setCreatedAt (LocalDateTime createdAt) {this.createdAt = createdAt;}
-    public void setUpdatedAt (LocalDateTime updatedAt) {this.updatedAt = updatedAt;}
+    public void setId(Long id) { this.id = id; }
+    public void setUser(User user) { this.user = user; }
+    public void setMedicine(Medicine medicine) { this.medicine = medicine; }
+    public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
+    public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

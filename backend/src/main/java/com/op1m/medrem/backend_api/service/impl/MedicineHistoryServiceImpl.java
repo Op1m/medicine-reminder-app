@@ -1,161 +1,102 @@
 package com.op1m.medrem.backend_api.service.impl;
 
-import com.op1m.medrem.backend_api.controller.MedicineHistoryController;
-import com.op1m.medrem.backend_api.dto.DTOMapper;
-import com.op1m.medrem.backend_api.dto.MedicineHistoryDTO;
 import com.op1m.medrem.backend_api.entity.*;
 import com.op1m.medrem.backend_api.entity.enums.MedicineStatus;
 import com.op1m.medrem.backend_api.repository.MedicineHistoryRepository;
 import com.op1m.medrem.backend_api.repository.ReminderRepository;
 import com.op1m.medrem.backend_api.service.MedicineHistoryService;
-import com.op1m.medrem.backend_api.service.ReminderService;
 import com.op1m.medrem.backend_api.service.UserService;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
-import org.hibernate.query.sql.internal.ParameterRecognizerImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.security.PublicKey;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 @Service
 public class MedicineHistoryServiceImpl implements MedicineHistoryService {
+
     @Autowired
     private MedicineHistoryRepository historyRepository;
 
     @Autowired
-    private UserService userService;
-
-    @Autowired
-    private ReminderService reminderService;
-
-    @Autowired
     private ReminderRepository reminderRepository;
+
     @Autowired
-    private MedicineHistoryRepository medicineHistoryRepository;
+    private UserService userService;
 
     @Override
     @Transactional
-    public MedicineHistory createScheduleDose(Long reminderId, LocalDateTime scheduledTime) {
+    public MedicineHistory createScheduleDose(Long reminderId, OffsetDateTime scheduledTime) {
         Reminder reminder = reminderRepository.findById(reminderId)
                 .orElseThrow(() -> new RuntimeException("Reminder not found: " + reminderId));
 
         MedicineHistory history = new MedicineHistory();
         history.setReminder(reminder);
-        history.setScheduledTime(scheduledTime != null ? scheduledTime : LocalDateTime.now());
+        history.setScheduledTime(scheduledTime != null ? scheduledTime : OffsetDateTime.now(ZoneOffset.UTC));
         history.setStatus(MedicineStatus.PENDING);
 
-        MedicineHistory saved = medicineHistoryRepository.save(history);
-
-        try {
-            if (saved.getReminder() != null) {
-                if (saved.getReminder().getMedicine() != null) {
-                    saved.getReminder().getMedicine().getName();
-                }
-                if (saved.getReminder().getUser() != null) {
-                    saved.getReminder().getUser().getId();
-                    saved.getReminder().getUser().getUsername();
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return saved;
+        return historyRepository.save(history);
     }
 
     @Override
     @Transactional
     public MedicineHistory markAsTaken(Long historyId, String notes) {
-
-        MedicineHistory history = medicineHistoryRepository.findById(historyId)
+        MedicineHistory history = historyRepository.findById(historyId)
                 .orElseThrow(() -> new RuntimeException("History not found: " + historyId));
 
-        history.setStatus(MedicineStatus.TAKEN);
-        history.setTakenAt(LocalDateTime.now());
-
+        history.markAsTaken();
         if (notes != null) {
             history.setNotes(notes);
         }
-
-        if (history.getReminder() != null) {
-            if (history.getReminder().getMedicine() != null) {
-                history.getReminder().getMedicine().getName();
-            }
-            if (history.getReminder().getUser() != null) {
-                history.getReminder().getUser().getId();
-                history.getReminder().getUser().getUsername();
-            }
-        }
-
-        return history;
+        return historyRepository.save(history);
     }
 
-    @Transactional
     @Override
+    @Transactional
     public MedicineHistory markAsSkipped(Long historyId) {
-        MedicineHistory history = medicineHistoryRepository.findWithReminderAndRelationsById(historyId);
+        MedicineHistory history = historyRepository.findWithReminderAndRelationsById(historyId);
         if (history == null) {
             throw new RuntimeException("MedicineHistory not found: " + historyId);
         }
-
-        history.setStatus(MedicineStatus.SKIPPED);
-        MedicineHistory saved = medicineHistoryRepository.save(history);
-
-        return saved;
+        history.markAsSkipped();
+        return historyRepository.save(history);
     }
 
     @Override
     public List<MedicineHistory> getUserMedicineHistory(Long userId) {
         User user = userService.findById(userId);
-        if(user == null) {
-            throw new RuntimeException("User not found");
-        }
-        return  historyRepository.findByReminderUserOrderByScheduledTimeDesc(user);
+        if (user == null) throw new RuntimeException("User not found");
+        return historyRepository.findByReminderUserOrderByScheduledTimeDesc(user);
     }
 
     @Override
     public List<MedicineHistory> getMedicineHistoryByStatus(Long userId, MedicineStatus status) {
         User user = userService.findById(userId);
-        if(user == null) {
-            throw new RuntimeException("User not found");
-        }
-        return  historyRepository.findByReminderUserAndStatusOrderByScheduledTimeDesc(user, status);
+        if (user == null) throw new RuntimeException("User not found");
+        return historyRepository.findByReminderUserAndStatusOrderByScheduledTimeDesc(user, status);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<MedicineHistory> getHistoryByPeriod(Long userId, LocalDateTime start, LocalDateTime end) {
+    public List<MedicineHistory> getHistoryByPeriod(Long userId, OffsetDateTime start, OffsetDateTime end) {
         User user = userService.findById(userId);
-        List<MedicineHistory> list = historyRepository.findByUserAndPeriod(user, start, end);
-        for (MedicineHistory h : list) {
-            if (h.getReminder() != null) {
-                if (h.getReminder().getMedicine() != null) h.getReminder().getMedicine().getName();
-                if (h.getReminder().getUser() != null) h.getReminder().getUser().getId();
-            }
-        }
-        return list;
+        if (user == null) throw new RuntimeException("User not found");
+        return historyRepository.findByUserAndPeriod(user, start, end);
     }
-
 
     @Override
     @Transactional
     public void checkAndMarkMissedDoses() {
-        LocalDateTime threshold = LocalDateTime.now().minusMinutes(10);
+        OffsetDateTime threshold = OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(10);
         List<MedicineHistory> pendingHistories = historyRepository.findByStatusAndScheduledTimeBefore(
                 MedicineStatus.PENDING, threshold
         );
-
         for (MedicineHistory history : pendingHistories) {
             history.markAsMissed();
         }
+        historyRepository.saveAll(pendingHistories);
     }
 
     @Override
@@ -168,17 +109,13 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
             throw new RuntimeException("Telegram ID does not match reminder owner");
         }
 
-        LocalDateTime newScheduledTime = LocalDateTime.now().plusMinutes(minutes);
+        OffsetDateTime newScheduledTime = OffsetDateTime.now(ZoneOffset.UTC).plusMinutes(minutes);
 
         MedicineHistory postponedHistory = new MedicineHistory(reminder, newScheduledTime);
         postponedHistory.setStatus(MedicineStatus.POSTPONED);
         postponedHistory.setNotes("Отложено на " + minutes + " минут");
 
-        MedicineHistory saved = historyRepository.save(postponedHistory);
-
-        System.out.println("⏰ Напоминание " + reminderId + " отложено на " + minutes + " минут. Новая запись ID: " + saved.getId());
-
-        return saved;
+        return historyRepository.save(postponedHistory);
     }
 
     @Override
@@ -191,9 +128,8 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
             throw new RuntimeException("Telegram ID does not match reminder owner");
         }
 
-        LocalDate today = LocalDate.now();
-        LocalDateTime startOfDay = today.atStartOfDay();
-        LocalDateTime endOfDay = today.plusDays(1).atStartOfDay().minusNanos(1);
+        OffsetDateTime startOfDay = OffsetDateTime.now(ZoneOffset.UTC).withHour(0).withMinute(0).withSecond(0).withNano(0);
+        OffsetDateTime endOfDay = startOfDay.plusDays(1).minusNanos(1);
 
         List<MedicineHistory> histories = historyRepository.findByUserAndPeriod(
                 reminder.getUser(), startOfDay, endOfDay);
@@ -204,30 +140,30 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
                 .orElse(null);
 
         if (history == null) {
-            LocalDateTime scheduledTime = today.atTime(reminder.getReminderTime());
+            OffsetDateTime scheduledTime = startOfDay.withHour(reminder.getReminderTime().getHour())
+                    .withMinute(reminder.getReminderTime().getMinute());
             history = new MedicineHistory(reminder, scheduledTime);
             history = historyRepository.save(history);
         }
 
-        history.setStatus(MedicineStatus.SKIPPED);
+        history.markAsSkipped();
         historyRepository.save(history);
-
-        System.out.println("✅ Напоминание " + reminderId + " отмечено как пропущено через бота");
     }
 
     @Override
     @Transactional
     public void checkPostponedReminders() {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime threshold = now.minusSeconds(5);
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        OffsetDateTime oneMinuteAgo = now.minusMinutes(1);
 
-        List<MedicineHistory> postponedHistories = historyRepository.findByStatusAndScheduledTimeBetween( MedicineStatus.POSTPONED, now.minusMinutes(1), now );
+        List<MedicineHistory> postponedHistories = historyRepository.findByStatusAndScheduledTimeBetween(
+                MedicineStatus.POSTPONED, oneMinuteAgo, now);
 
         for (MedicineHistory history : postponedHistories) {
             history.setStatus(MedicineStatus.PENDING);
             history.setNotes("Повторное напоминание");
-            System.out.println("⏰ Отложенное напоминание активировано: " + history.getId());
         }
+        historyRepository.saveAll(postponedHistories);
     }
 
     @Override
@@ -240,9 +176,8 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
             throw new RuntimeException("Telegram ID does not match reminder owner");
         }
 
-        LocalDate today = LocalDate.now();
-        LocalDateTime startOfDay = today.atStartOfDay();
-        LocalDateTime endOfDay = today.plusDays(1).atStartOfDay().minusNanos(1);
+        OffsetDateTime startOfDay = OffsetDateTime.now(ZoneOffset.UTC).withHour(0).withMinute(0).withSecond(0).withNano(0);
+        OffsetDateTime endOfDay = startOfDay.plusDays(1).minusNanos(1);
 
         List<MedicineHistory> histories = historyRepository.findByUserAndPeriod(
                 reminder.getUser(), startOfDay, endOfDay);
@@ -253,14 +188,13 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
                 .orElse(null);
 
         if (history == null) {
-            LocalDateTime scheduledTime = today.atTime(reminder.getReminderTime());
+            OffsetDateTime scheduledTime = startOfDay.withHour(reminder.getReminderTime().getHour())
+                    .withMinute(reminder.getReminderTime().getMinute());
             history = new MedicineHistory(reminder, scheduledTime);
             history = historyRepository.save(history);
         }
 
         history.markAsTaken();
         historyRepository.save(history);
-
-        System.out.println("✅ Напоминание " + reminderId + " отмечено как принято через бота");
     }
 }

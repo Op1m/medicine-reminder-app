@@ -18,7 +18,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -121,8 +122,8 @@ public class TelegramAuthController {
             user.setPhotoUrl(photoUrl);
             user.setEmail("telegram_" + tgId + "@placeholder.local");
             user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
-            user.setCreatedAt(LocalDateTime.now());
-            user.setUpdatedAt(LocalDateTime.now());
+            user.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+            user.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
             user.setActive(true);
             user = userService.save(user);
             System.out.println(">>> Created new user with id=" + user.getId() +
@@ -139,7 +140,7 @@ public class TelegramAuthController {
             if (chatId != null) {
                 user.setTelegramChatId(chatId);
             }
-            user.setUpdatedAt(LocalDateTime.now());
+            user.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
             user = userService.update(user);
             System.out.println(">>> Updated existing user with id=" + user.getId() +
                     ", telegramId=" + user.getTelegramId() +

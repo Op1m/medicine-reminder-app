@@ -2,7 +2,6 @@ package com.op1m.medrem.backend_api.service.impl;
 
 import com.op1m.medrem.backend_api.dto.BulkDeleteResponse;
 import com.op1m.medrem.backend_api.entity.MedicineHistory;
-import com.op1m.medrem.backend_api.entity.enums.MedicineStatus;
 import com.op1m.medrem.backend_api.entity.Reminder;
 import com.op1m.medrem.backend_api.repository.MedicineHistoryRepository;
 import com.op1m.medrem.backend_api.repository.ReminderRepository;
@@ -12,11 +11,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class BulkServiceImpl implements BulkService {
@@ -167,7 +166,7 @@ public class BulkServiceImpl implements BulkService {
 
         while (!currentDate.isAfter(endDate)) {
             try {
-                LocalDateTime scheduledTime = LocalDateTime.of(currentDate, reminder.getReminderTime());
+                OffsetDateTime scheduledTime = currentDate.atTime(reminder.getReminderTime()).atOffset(ZoneOffset.UTC);
                 MedicineHistory history = medicineHistoryService.createScheduleDose(reminderId, scheduledTime);
                 createdHistories.add(history);
                 System.out.println("✅ Создана запись истории на: " + currentDate);

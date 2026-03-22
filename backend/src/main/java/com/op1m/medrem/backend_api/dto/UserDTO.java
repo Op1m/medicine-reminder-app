@@ -1,6 +1,7 @@
 package com.op1m.medrem.backend_api.dto;
 
-import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import java.time.OffsetDateTime;
 
 public class UserDTO {
     private Long id;
@@ -10,13 +11,18 @@ public class UserDTO {
     private String lastName;
     private String photoUrl;
     private Long telegramChatId;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    private OffsetDateTime createdAt;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    private OffsetDateTime updatedAt;
+
     private Boolean isActive;
 
     public UserDTO(Long id, String username, String email, String firstName,
                    String lastName, String photoUrl, Long telegramChatId,
-                   LocalDateTime createdAt, LocalDateTime updatedAt, Boolean isActive) {
+                   OffsetDateTime createdAt, OffsetDateTime updatedAt, Boolean isActive) {
         this.id = id;
         this.username = username;
         this.email = email;
@@ -47,15 +53,15 @@ public class UserDTO {
     public Long getTelegramChatId() { return telegramChatId; }
     public void setTelegramChatId(Long telegramChatId) { this.telegramChatId = telegramChatId; }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
 
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public OffsetDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
 
     public Boolean getIsActive() { return isActive; }
     public void setIsActive(Boolean isActive) { this.isActive = isActive; }
 
-    public String getPhotoUrl() {return photoUrl;}
-    public void setPhotoUrl(String photoUrl) {}
+    public String getPhotoUrl() { return photoUrl; }
+    public void setPhotoUrl(String photoUrl) { this.photoUrl = photoUrl; }
 }

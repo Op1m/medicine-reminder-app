@@ -2,8 +2,8 @@ package com.op1m.medrem.backend_api.entity;
 
 import com.op1m.medrem.backend_api.entity.enums.MedicineStatus;
 import jakarta.persistence.*;
-
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "medicine_history")
@@ -17,10 +17,10 @@ public class MedicineHistory {
     private Reminder reminder;
 
     @Column(name = "scheduled_time", nullable = false)
-    private LocalDateTime scheduledTime;
+    private OffsetDateTime scheduledTime;
 
     @Column(name = "taken_at")
-    private LocalDateTime takenAt;
+    private OffsetDateTime takenAt;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -30,13 +30,13 @@ public class MedicineHistory {
     private String notes;
 
     @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
-    public MedicineHistory () {
-        this.createdAt = LocalDateTime.now();
+    public MedicineHistory() {
+        this.createdAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
-    public MedicineHistory(Reminder reminder, LocalDateTime scheduledTime) {
+    public MedicineHistory(Reminder reminder, OffsetDateTime scheduledTime) {
         this();
         this.reminder = reminder;
         this.scheduledTime = scheduledTime;
@@ -45,7 +45,7 @@ public class MedicineHistory {
 
     public void markAsTaken() {
         this.status = MedicineStatus.TAKEN;
-        this.takenAt = LocalDateTime.now();
+        this.takenAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
     public void markAsSkipped() {
@@ -62,18 +62,18 @@ public class MedicineHistory {
     public Reminder getReminder() { return reminder; }
     public void setReminder(Reminder reminder) { this.reminder = reminder; }
 
-    public LocalDateTime getScheduledTime() { return scheduledTime; }
-    public void setScheduledTime(LocalDateTime scheduledTime) { this.scheduledTime = scheduledTime; }
+    public OffsetDateTime getScheduledTime() { return scheduledTime; }
+    public void setScheduledTime(OffsetDateTime scheduledTime) { this.scheduledTime = scheduledTime; }
 
-    public LocalDateTime getTakenAt() { return takenAt; }
-    public void setTakenAt(LocalDateTime takenAt) { this.takenAt = takenAt; }
+    public OffsetDateTime getTakenAt() { return takenAt; }
+    public void setTakenAt(OffsetDateTime takenAt) { this.takenAt = takenAt; }
 
     public MedicineStatus getStatus() { return status; }
-    public void setStatus(MedicineStatus medicineStatus) { this.status = medicineStatus; }
+    public void setStatus(MedicineStatus status) { this.status = status; }
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
 }

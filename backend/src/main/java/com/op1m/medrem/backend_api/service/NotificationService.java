@@ -7,11 +7,11 @@ import com.op1m.medrem.backend_api.entity.User;
 import com.op1m.medrem.backend_api.entity.enums.MedicineStatus;
 import com.op1m.medrem.backend_api.repository.MedicineHistoryRepository;
 import com.op1m.medrem.backend_api.repository.PushSubscriptionRepository;
-import com.op1m.medrem.backend_api.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 @Service
@@ -57,9 +57,8 @@ public class NotificationService {
     }
 
     private boolean hasPostponedReminder(Reminder reminder) {
-        LocalDateTime hourAgo = LocalDateTime.now().minusHours(1);
+        OffsetDateTime hourAgo = OffsetDateTime.now(ZoneOffset.UTC).minusHours(1);
         List<MedicineHistory> histories = medicineHistoryRepository.findByReminderAndScheduledTimeAfter(reminder, hourAgo);
         return histories.stream().anyMatch(h -> h.getStatus() == MedicineStatus.POSTPONED);
     }
-
 }

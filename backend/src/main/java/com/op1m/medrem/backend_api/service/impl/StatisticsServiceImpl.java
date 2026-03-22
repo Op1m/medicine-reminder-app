@@ -13,8 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -39,8 +39,8 @@ public class StatisticsServiceImpl implements StatisticsService {
             throw new RuntimeException("User not found");
         }
 
-        LocalDateTime startDateTime = startDate.atStartOfDay();
-        LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
+        OffsetDateTime startDateTime = startDate.atStartOfDay().atOffset(ZoneOffset.UTC);
+        OffsetDateTime endDateTime = endDate.atTime(23, 59, 59).atOffset(ZoneOffset.UTC);
 
         List<MedicineHistory> history = medicineHistoryRepository.findByUserAndPeriod(user, startDateTime, endDateTime);
 
@@ -64,8 +64,8 @@ public class StatisticsServiceImpl implements StatisticsService {
             throw new RuntimeException("User not found");
         }
 
-        LocalDateTime startDateTime = startDate.atStartOfDay();
-        LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
+        OffsetDateTime startDateTime = startDate.atStartOfDay().atOffset(ZoneOffset.UTC);
+        OffsetDateTime endDateTime = endDate.atTime(23, 59, 59).atOffset(ZoneOffset.UTC);
 
         List<MedicineHistory> history = medicineHistoryRepository.findByUserAndPeriod(user, startDateTime, endDateTime);
 
@@ -145,7 +145,7 @@ public class StatisticsServiceImpl implements StatisticsService {
 
         stats.setStreakDays(calculateStreakDays(user));
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
         long todayRemindersCount = allHistory.stream()
                 .filter(h -> h.getScheduledTime().toLocalDate().equals(today))
                 .count();
@@ -176,13 +176,13 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     private int calculateStreakDays(User user) {
-        LocalDate currentDate = LocalDate.now();
+        LocalDate currentDate = LocalDate.now(ZoneOffset.UTC);
         int streak = 0;
 
         for (int i = 0; i < 30; i++) {
             LocalDate checkDate = currentDate.minusDays(i);
-            LocalDateTime startOfDay = checkDate.atStartOfDay();
-            LocalDateTime endOfDay = checkDate.atTime(23, 59, 59);
+            OffsetDateTime startOfDay = checkDate.atStartOfDay().atOffset(ZoneOffset.UTC);
+            OffsetDateTime endOfDay = checkDate.atTime(23, 59, 59).atOffset(ZoneOffset.UTC);
 
             List<MedicineHistory> dayHistory = medicineHistoryRepository.findByUserAndPeriod(user, startOfDay, endOfDay);
 

@@ -4,15 +4,16 @@ import com.op1m.medrem.backend_api.entity.User;
 import com.op1m.medrem.backend_api.repository.UserRepository;
 import com.op1m.medrem.backend_api.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
 @Service
-public class UserServiceImpl implements UserService  {
+public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
 
@@ -26,11 +27,11 @@ public class UserServiceImpl implements UserService  {
 
     @Override
     public User createUser(String username, String password, String email) {
-        if(existByUsername(username)) {
+        if (existByUsername(username)) {
             throw new RuntimeException("Пользователь с username '" + username + "' уже существует");
         }
 
-        if(existByEmail(email)) {
+        if (existByEmail(email)) {
             throw new RuntimeException("Пользователь с email '" + email + "' уже существует");
         }
 
@@ -49,71 +50,57 @@ public class UserServiceImpl implements UserService  {
     }
 
     @Override
-    public User findByUsername (String username) {
+    public User findByUsername(String username) {
         Optional<User> user = userRepository.findByUsername(username);
-
-        if(user.isPresent()) {
-            return user.get();
-        } else {
-            return null;
-        }
+        return user.orElse(null);
     }
 
     @Override
     public User findById(Long id) {
         Optional<User> user = userRepository.findById(id);
-
-        if(user.isPresent()) {
-            return user.get();
-        } else {
-            return null;
-        }
+        return user.orElse(null);
     }
 
     @Override
     public List<User> getAllUsers() {
-        List<User> users = userRepository.findAll();
-        return users;
+        return userRepository.findAll();
     }
 
     @Override
     public User updateUser(Long id, String username, String email) {
         User user = findById(id);
-        if(user == null) {
+        if (user == null) {
             throw new RuntimeException("Пользователь с ID " + id + " не найден");
         }
 
-        if(!user.getUsername().equals(username) && existByUsername(username)) {
+        if (!user.getUsername().equals(username) && existByUsername(username)) {
             throw new RuntimeException("Username '" + username + "' уже занят");
         }
 
-        if(!user.getEmail().equals(email) && existByEmail(email)) {
+        if (!user.getEmail().equals(email) && existByEmail(email)) {
             throw new RuntimeException("Email '" + email + "' уже используется");
         }
 
         user.setUsername(username);
         user.setEmail(email);
 
-        User updatedUser = userRepository.save(user);
-        return updatedUser;
+        return userRepository.save(user);
     }
 
     @Override
     public User linkTelegramAccount(Long userId, Long telegramChatId) {
         User user = findById(userId);
-        if(user == null) {
+        if (user == null) {
             throw new RuntimeException("Пользователь с ID " + userId + " не найден");
         }
 
         Optional<User> existingUser = userRepository.findByTelegramChatId(telegramChatId);
-        if(existingUser.isPresent() && !existingUser.get().getId().equals(userId)) {
+        if (existingUser.isPresent() && !existingUser.get().getId().equals(userId)) {
             throw new RuntimeException("Этот Telegram аккаунт уже привязан к другому пользователю");
         }
 
         user.setTelegramChatId(telegramChatId);
-        User updatedUser = userRepository.save(user);
-
-        return updatedUser;
+        return userRepository.save(user);
     }
 
     @Override
@@ -213,15 +200,15 @@ public class UserServiceImpl implements UserService  {
     @Override
     public User save(User user) {
         if (user.getCreatedAt() == null) {
-            user.setCreatedAt(LocalDateTime.now());
+            user.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
         }
-        user.setUpdatedAt(LocalDateTime.now());
+        user.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
         return userRepository.save(user);
     }
 
     @Override
     public User update(User user) {
-        user.setUpdatedAt(LocalDateTime.now());
+        user.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
         return userRepository.save(user);
     }
 }
