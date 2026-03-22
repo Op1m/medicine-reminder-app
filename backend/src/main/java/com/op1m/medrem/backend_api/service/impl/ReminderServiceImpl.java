@@ -167,9 +167,12 @@ public class ReminderServiceImpl implements ReminderService {
     public boolean shouldNotifyNow(Reminder reminder) {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         LocalTime rt = reminder.getReminderTime();
-        boolean timeMatches = now.getHour() == rt.getHour() && now.getMinute() == rt.getMinute();
+        LocalTime reminderTimeUTC = rt.minusHours(7);
+
+        boolean timeMatches = now.getHour() == reminderTimeUTC.getHour() && now.getMinute() == reminderTimeUTC.getMinute();
         boolean dayMatches = checkDayOfWeek(reminder, now);
-        logger.debug("Checking reminder {} now={} tm={} dm={}", reminder.getId(), now, timeMatches, dayMatches);
+
+        logger.debug("Checking reminder {} now={} reminderLocal={} reminderUTC={} tm={} dm={}", reminder.getId(), now, rt, reminderTimeUTC, timeMatches, dayMatches);
         return timeMatches && dayMatches;
     }
 
