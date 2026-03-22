@@ -88,6 +88,32 @@ public class MedicineHistoryController {
         }
     }
 
+    @PostMapping("/{historyId}/postpone")
+    public ResponseEntity<MedicineHistoryDTO> postponeHistory(
+            @PathVariable Long historyId,
+            @RequestParam(defaultValue = "10") int minutes) {
+        try {
+            MedicineHistory history = medicineHistoryService.findById(historyId);
+            if (history == null) {
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
+
+            OffsetDateTime newScheduledTime = OffsetDateTime.now(ZoneOffset.UTC).plusMinutes(minutes);
+
+            MedicineHistory postponedHistory = new MedicineHistory(history.getReminder(), newScheduledTime);
+            postponedHistory.setStatus(MedicineStatus.POSTPONED);
+            postponedHistory.setNotes("Отложено на " + minutes + " минут");
+
+            MedicineHistory saved = medicineHistoryService.save(postponedHistory);
+
+            MedicineHistoryDTO dto = DTOMapper.toMedicineHistoryDTO(saved);
+            return new ResponseEntity<>(dto, HttpStatus.OK);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     @PostMapping("/reminder/{reminderId}/postpone")
     public ResponseEntity<?> postponeReminder(
             @PathVariable Long reminderId,

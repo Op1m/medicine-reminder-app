@@ -173,6 +173,17 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
     }
 
     @Override
+    public MedicineHistory findById(Long historyId) {
+        return historyRepository.findById(historyId)
+                .orElseThrow(() -> new RuntimeException("History not found: " + historyId));
+    }
+
+    @Override
+    public MedicineHistory save(MedicineHistory history) {
+        return historyRepository.save(history);
+    }
+
+    @Override
     @Transactional
     public void markReminderAsSkippedByBot(Long reminderId, Long chatId) {
         Reminder reminder = reminderRepository.findById(reminderId)
