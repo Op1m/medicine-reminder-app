@@ -5,6 +5,7 @@ import com.op1m.medrem.backend_api.entity.enums.MedicineStatus;
 import com.op1m.medrem.backend_api.repository.MedicineHistoryRepository;
 import com.op1m.medrem.backend_api.repository.ReminderRepository;
 import com.op1m.medrem.backend_api.service.MedicineHistoryService;
+import com.op1m.medrem.backend_api.service.NotificationService;
 import com.op1m.medrem.backend_api.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,9 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private NotificationService notificationService;
 
     @Override
     @Transactional
@@ -115,7 +119,12 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
         postponedHistory.setStatus(MedicineStatus.POSTPONED);
         postponedHistory.setNotes("Отложено на " + minutes + " минут");
 
-        return historyRepository.save(postponedHistory);
+        MedicineHistory saved = historyRepository.save(postponedHistory);
+
+        System.out.println("⏰ Напоминание " + reminderId + " отложено на " + minutes + " минут. Новая запись ID: " + saved.getId() +
+            ", время: " + newScheduledTime);
+
+        return saved;
     }
 
     @Override
@@ -148,6 +157,8 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
 
         history.markAsSkipped();
         historyRepository.save(history);
+
+        System.out.println("✅ Напоминание " + reminderId + " отмечено как пропущено через бота");
     }
 
     @Override
@@ -159,9 +170,20 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
         List<MedicineHistory> postponedHistories = historyRepository.findByStatusAndScheduledTimeBetween(
                 MedicineStatus.POSTPONED, oneMinuteAgo, now);
 
+        System.out.println("🔍 Проверка отложенных напоминаний: найдено " + postponedHistories.size() + " записей, время сейчас: " + now);
+
         for (MedicineHistory history : postponedHistories) {
+            System.out.println("⏰ Активация отложенного напоминания ID: " + history.getId() +
+                ", запланированное время: " + history.getScheduledTime());
+
             history.setStatus(MedicineStatus.PENDING);
             history.setNotes("Повторное напоминание");
+
+            Reminder reminder = history.getReminder();
+            if (reminder != null) {
+                notificationService.notifyUser(reminder);
+                System.out.println("📢 Отправлено повторное уведомление для напоминания: " + reminder.getId());
+            }
         }
         historyRepository.saveAll(postponedHistories);
     }
@@ -196,5 +218,7 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
 
         history.markAsTaken();
         historyRepository.save(history);
+
+        System.out.println("✅ Напоминание " + reminderId + " отмечено как принято через бота");
     }
 }

@@ -29,7 +29,7 @@ public class ReminderScheduler {
     @Scheduled(cron = "0 * * * * *")
     @Transactional
     public void checkDueReminders() {
-        System.out.println("🔔 ReminderScheduler: Проверка напоминаний...");
+        System.out.println("🔔 ReminderScheduler: Проверка напоминаний... " + OffsetDateTime.now(ZoneOffset.UTC));
 
         List<Reminder> dueReminders = reminderService.getDueReminders();
 
@@ -37,7 +37,8 @@ public class ReminderScheduler {
             System.out.println("⏰ Время принять: " +
                     reminder.getMedicine().getName() +
                     " (" + reminder.getMedicine().getDosage() + ")" +
-                    " - Пользователь: " + reminder.getUser().getUsername());
+                    " - Пользователь: " + reminder.getUser().getUsername() +
+                    " - Время: " + reminder.getReminderTime());
 
             MedicineHistory history = createHistoryRecord(reminder);
 
@@ -55,11 +56,16 @@ public class ReminderScheduler {
 
     private MedicineHistory createHistoryRecord(Reminder reminder) {
         try {
-            MedicineHistory history = medicineHistoryService.createScheduleDose(reminder.getId(), OffsetDateTime.now(ZoneOffset.UTC));
-            System.out.println("✅ Создана запись истории: " + history.getId());
+            MedicineHistory history = medicineHistoryService.createScheduleDose(
+                reminder.getId(),
+                OffsetDateTime.now(ZoneOffset.UTC)
+            );
+            System.out.println("✅ Создана запись истории: " + history.getId() +
+                ", время: " + OffsetDateTime.now(ZoneOffset.UTC));
             return history;
         } catch (Exception e) {
             System.out.println("❌ Ошибка создания истории: " + e.getMessage());
+            e.printStackTrace();
             return null;
         }
     }
