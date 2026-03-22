@@ -8,6 +8,7 @@ import com.op1m.medrem.backend_api.repository.ReminderRepository;
 import com.op1m.medrem.backend_api.service.ReminderService;
 import com.op1m.medrem.backend_api.service.UserService;
 import com.op1m.medrem.backend_api.service.MedicineService;
+import org.hibernate.Hibernate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,12 +62,21 @@ public class ReminderServiceImpl implements ReminderService {
     }
 
     @Override
-    @Cacheable(cacheNames = "remindersByUser", key = "#userId")
+    @Transactional(readOnly = true)
     public List<Reminder> getUserReminders(Long userId) {
         logger.debug("Получение напоминаний для user={}", userId);
         User user = userService.findById(userId);
         if (user == null) throw new RuntimeException("Пользователь не найден");
         List<Reminder> reminders = reminderRepository.findByUser(user);
+
+        for (Reminder reminder : reminders) {
+            Hibernate.initialize(reminder.getUser());
+            Hibernate.initialize(reminder.getMedicine());
+            if (reminder.getMedicine() != null) {
+                Hibernate.initialize(reminder.getMedicine().getCategories());
+            }
+        }
+
         logger.debug("Найдено {} напоминаний", reminders.size());
         return reminders;
     }

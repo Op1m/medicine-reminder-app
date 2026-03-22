@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/medicine-history")
 public class MedicineHistoryController {
-
     @Autowired
     private MedicineHistoryService medicineHistoryService;
 
@@ -68,7 +67,11 @@ public class MedicineHistoryController {
                     .map(DTOMapper::toMedicineHistoryDTO)
                     .collect(Collectors.toList());
             return new ResponseEntity<>(historyDTO, HttpStatus.OK);
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().build();
         } catch (RuntimeException e) {
+            e.printStackTrace();
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
@@ -125,7 +128,11 @@ public class MedicineHistoryController {
         try {
             OffsetDateTime scheduled = null;
             if (request.getScheduledTime() != null) {
-                scheduled = OffsetDateTime.parse(request.getScheduledTime());
+                try {
+                    scheduled = OffsetDateTime.parse(request.getScheduledTime());
+                } catch (DateTimeParseException ex) {
+                    scheduled = OffsetDateTime.parse(request.getScheduledTime() + "Z");
+                }
             }
             MedicineHistory history = medicineHistoryService.createScheduleDose(request.getReminderId(), scheduled);
             MedicineHistoryDTO dto = DTOMapper.toMedicineHistoryDTO(history);
@@ -147,7 +154,6 @@ public class MedicineHistoryController {
 
     public static class MarkTakenRequest {
         private String notes;
-
         public String getNotes() { return notes; }
         public void setNotes(String notes) { this.notes = notes; }
     }
@@ -155,7 +161,6 @@ public class MedicineHistoryController {
     public static class ScheduleDoseRequest {
         private Long reminderId;
         private String scheduledTime;
-
         public Long getReminderId() { return reminderId; }
         public void setReminderId(Long reminderId) { this.reminderId = reminderId; }
         public String getScheduledTime() { return scheduledTime; }

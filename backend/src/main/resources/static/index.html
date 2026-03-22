@@ -1720,6 +1720,9 @@
                 nextSunday.setDate(currentMonday.getDate() + 13);
                 nextSunday.setHours(23,59,59,999);
 
+                currentDate = today;
+                selectedDay = today;
+
                 const start = prevMonday;
                 const end = nextSunday;
 
@@ -1741,6 +1744,8 @@
                     historyMap.set(dKey, dayHistory);
                     historyCache.set(dKey, { data: dayHistory, timestamp: Date.now() });
                 }
+
+                await loadHistoryForDate(selectedDay);
 
                 renderGroupsForDate(selectedDay);
                 renderWeek(currentDate);
@@ -2820,7 +2825,14 @@
                 });
                 weekRow.appendChild(chip);
             });
-            if (monthLabel) monthLabel.childNodes[0].nodeValue = centerDate.toLocaleString('ru', { month: 'long', year: 'numeric' }).replace(' г.', '') + ' ';
+            const monthNames = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
+            if (monthLabel) {
+                monthLabel.childNodes[0].nodeValue = monthNames[centerDate.getMonth()] + ' ' + centerDate.getFullYear() + ' ';
+            }
+
+            if (selectedDay) {
+                renderGroupsForDate(selectedDay);
+            }
         }
 
         let calDate = new Date();

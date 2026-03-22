@@ -52,6 +52,7 @@ public interface MedicineHistoryRepository extends JpaRepository<MedicineHistory
                                                          @Param("start") OffsetDateTime start,
                                                          @Param("end") OffsetDateTime end);
 
+
     @Modifying
     @Transactional
     @Query("delete from MedicineHistory mh where mh.reminder.id = :reminderId")

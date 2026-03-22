@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 
 @Component
 public class DTOMapper {
+
     public static UserDTO toUserDTO(User user) {
         if (user == null) return null;
 
@@ -28,7 +29,6 @@ public class DTOMapper {
                 user.getUpdatedAt(),
                 user.getActive()
         );
-
     }
 
     public static MedicineDTO toMedicineDTO(Medicine medicine) {
@@ -49,10 +49,29 @@ public class DTOMapper {
     public static ReminderDTO toReminderDTO(Reminder reminder) {
         if (reminder == null) return null;
 
+        MedicineDTO medicineDTO = null;
+        UserDTO userDTO = null;
+
+        try {
+            if (reminder.getMedicine() != null) {
+                medicineDTO = toMedicineDTO(reminder.getMedicine());
+            }
+        } catch (Exception e) {
+            medicineDTO = null;
+        }
+
+        try {
+            if (reminder.getUser() != null) {
+                userDTO = toUserDTO(reminder.getUser());
+            }
+        } catch (Exception e) {
+            userDTO = null;
+        }
+
         return new ReminderDTO(
                 reminder.getId(),
-                toUserDTO(reminder.getUser()),
-                toMedicineDTO(reminder.getMedicine()),
+                userDTO,
+                medicineDTO,
                 reminder.getReminderTime(),
                 reminder.getIsActive(),
                 reminder.getDaysOfWeek(),
@@ -64,9 +83,18 @@ public class DTOMapper {
     public static MedicineHistoryDTO toMedicineHistoryDTO(MedicineHistory history) {
         if (history == null) return null;
 
+        ReminderDTO reminderDTO = null;
+        try {
+            if (history.getReminder() != null) {
+                reminderDTO = toReminderDTO(history.getReminder());
+            }
+        } catch (Exception e) {
+            reminderDTO = null;
+        }
+
         return new MedicineHistoryDTO(
                 history.getId(),
-                toReminderDTO(history.getReminder()),
+                reminderDTO,
                 history.getScheduledTime(),
                 history.getTakenAt(),
                 history.getStatus(),
@@ -78,11 +106,16 @@ public class DTOMapper {
     public static CategoryDTO toCategoryDTO(Category category) {
         if (category == null) return null;
 
-        Set<MedicineDTO> medicineDTOs = category.getMedicines() != null ?
-                category.getMedicines().stream()
+        Set<MedicineDTO> medicineDTOs = new HashSet<>();
+        try {
+            if (category.getMedicines() != null) {
+                medicineDTOs = category.getMedicines().stream()
                         .map(DTOMapper::toMedicineDTO)
-                        .collect(Collectors.toSet()) :
-                new HashSet<>();
+                        .collect(Collectors.toSet());
+            }
+        } catch (Exception e) {
+            medicineDTOs = new HashSet<>();
+        }
 
         return new CategoryDTO(
                 category.getId(),
