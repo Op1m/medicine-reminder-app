@@ -1,6 +1,7 @@
 package com.op1m.medrem.backend_api.security;
 
 import com.op1m.medrem.backend_api.entity.User;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
@@ -22,8 +23,8 @@ public class JwtTokenProvider {
 
     @PostConstruct
     public void init() {
-        if (jwtSecret == null || jwtSecret.length() < 16) {
-            throw new IllegalStateException("APP_JWT_SECRET must be set and >= 16 chars");
+        if (jwtSecret == null || jwtSecret.length() < 32) {
+            throw new IllegalStateException("APP_JWT_SECRET must be set and >= 32 chars");
         }
         key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
     }
@@ -39,5 +40,23 @@ public class JwtTokenProvider {
                 .setExpiration(exp)
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    public Long getUserIdFromToken(String token) {
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+        return Long.parseLong(claims.getSubject());
+    }
+
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
