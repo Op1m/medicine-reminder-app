@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -106,36 +107,42 @@ public class MedicineHistoryServiceImpl implements MedicineHistoryService {
     @Override
     @Transactional
     public MedicineHistory postponeReminder(Long reminderId, Long chatId, int minutes) {
-        System.out.println("🔍 postponeReminder вызван: reminderId=" + reminderId +
-            ", chatId=" + chatId + ", minutes=" + minutes);
-
         Reminder reminder = reminderRepository.findById(reminderId)
-                .orElseThrow(() -> {
-                    System.err.println("❌ Reminder not found: " + reminderId);
-                    return new RuntimeException("Reminder not found: " + reminderId);
-                });
-
-        System.out.println("🔍 Найден reminder: id=" + reminder.getId() +
-            ", userId=" + reminder.getUser().getId() +
-            ", telegramChatId пользователя=" + reminder.getUser().getTelegramChatId());
+                .orElseThrow(() -> new RuntimeException("Reminder not found: " + reminderId));
 
         if (!reminder.getUser().getTelegramChatId().equals(chatId)) {
-            System.err.println("❌ Chat ID mismatch: expected=" + reminder.getUser().getTelegramChatId() +
-                ", actual=" + chatId);
             throw new RuntimeException("Chat ID does not match reminder owner");
         }
 
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        OffsetDateTime startOfDay = today.atStartOfDay().atOffset(ZoneOffset.UTC);
+        OffsetDateTime endOfDay = startOfDay.plusDays(1).minusNanos(1);
+
+        List<MedicineHistory> todayHistories = historyRepository.findByUserAndPeriod(reminder.getUser(), startOfDay, endOfDay);
+        MedicineHistory postponedHistory = todayHistories.stream()
+                .filter(h -> h.getReminder().getId().equals(reminderId))
+                .findFirst()
+                .orElse(null);
+
+        if (postponedHistory == null) {
+            OffsetDateTime scheduledTime = today.atTime(reminder.getReminderTime()).atOffset(ZoneOffset.UTC);
+            postponedHistory = new MedicineHistory(reminder, scheduledTime);
+            postponedHistory.setStatus(MedicineStatus.POSTPONED);
+            postponedHistory = historyRepository.save(postponedHistory);
+        } else {
+            if (postponedHistory.getStatus() == MedicineStatus.PENDING) {
+                postponedHistory.setStatus(MedicineStatus.POSTPONED);
+                postponedHistory = historyRepository.save(postponedHistory);
+            }
+        }
+
         OffsetDateTime newScheduledTime = OffsetDateTime.now(ZoneOffset.UTC).plusMinutes(minutes);
-        System.out.println("🔍 Новое время: " + newScheduledTime);
+        MedicineHistory reminderHistory = new MedicineHistory(reminder, newScheduledTime);
+        reminderHistory.setStatus(MedicineStatus.PENDING);
+        reminderHistory.setNotes("Повторное напоминание после откладывания");
+        historyRepository.save(reminderHistory);
 
-        MedicineHistory postponedHistory = new MedicineHistory(reminder, newScheduledTime);
-        postponedHistory.setStatus(MedicineStatus.POSTPONED);
-        postponedHistory.setNotes("Отложено на " + minutes + " минут");
-
-        MedicineHistory saved = historyRepository.save(postponedHistory);
-        System.out.println("✅ Сохранено: id=" + saved.getId());
-
-        return saved;
+        return postponedHistory;
     }
 
     @Override
