@@ -2,6 +2,7 @@ package com.op1m.medrem.backend_api.config;
 
 import com.op1m.medrem.backend_api.security.JwtAuthenticationFilter;
 import com.op1m.medrem.backend_api.security.JwtTokenProvider;
+import com.op1m.medrem.backend_api.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,6 +21,9 @@ public class SecurityConfig {
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
+    @Autowired
+    private UserService userService;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -36,7 +40,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/bot/webhook").permitAll()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, userService), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }
