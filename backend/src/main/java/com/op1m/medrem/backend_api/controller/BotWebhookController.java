@@ -213,21 +213,25 @@ public class BotWebhookController {
         body.put("message_id", messageId);
         body.put("text", String.format(
                 "⏰ Напоминание отложено на %d минут. Я напомню снова через %d минут.\n\n" +
-                        "А пока можешь отметить сейчас:",
+                "А пока можешь отметить сейчас:",
                 minutes, minutes
         ));
 
         Map<String, Object> replyMarkup = new HashMap<>();
-        replyMarkup.put("inline_keyboard", new Object[]{
-                new Object[]{
-                        Map.of("text", "✅ Принять сейчас", "callback_data", "take_" + reminderId),
-                        Map.of("text", "❌ Пропустить", "callback_data", "skip_" + reminderId)
+        replyMarkup.put("inline_keyboard", new Object[][]{
+                {
+                    Map.of("text", "✅ Принять сейчас", "callback_data", "take_" + reminderId),
+                    Map.of("text", "❌ Пропустить", "callback_data", "skip_" + reminderId)
                 }
         });
         body.put("reply_markup", replyMarkup);
 
         try {
             restTemplate.postForEntity(url, body, String.class);
+            System.out.println("✅ editMessagePostponed успешно");
+
+            scheduleMessageExpiration(chatId, messageId, minutes);
+
         } catch (Exception e) {
             System.err.println("❌ Ошибка editMessagePostponed: " + e.getMessage());
         }
@@ -271,5 +275,26 @@ public class BotWebhookController {
         } catch (Exception e) {
             System.err.println("❌ Ошибка sendWelcomeMessage: " + e.getMessage());
         }
+    }
+
+    private void scheduleMessageExpiration(Long chatId, Integer messageId, int minutes) {
+        new java.util.Timer().schedule(new java.util.TimerTask() {
+        @Override
+            public void run() {
+                try {
+                    String url = "https://api.telegram.org/bot" + botToken + "/editMessageText";
+                    Map<String, Object> body = new HashMap<>();
+                    body.put("chat_id", chatId);
+                    body.put("message_id", messageId);
+                    body.put("text", "❌ Вы пропустили приём. Следующее напоминание придёт по расписанию.");
+                    body.put("reply_markup", null);
+
+                    restTemplate.postForEntity(url, body, String.class);
+                    System.out.println("✅ Сообщение заменено на пропуск через " + minutes + " минут");
+                } catch (Exception e) {
+                    System.err.println("❌ Ошибка замены сообщения: " + e.getMessage());
+                }
+            }
+        }, minutes * 60 * 1000);
     }
 }
