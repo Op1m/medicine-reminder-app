@@ -276,6 +276,8 @@ public void checkPostponedReminders() {
         if (reminder != null) {
             notificationService.notifyUser(reminder);
             System.out.println("📢 Отправлено уведомление для напоминания: " + reminder.getId());
+
+            historyRepository.delete(history);
         }
     }
 }

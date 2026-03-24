@@ -2636,40 +2636,62 @@ function optimisticPostponeReminder(reminderId, card) {
         }
 
         async function loadHistoryForDate(date) {
-            if (!currentUser) return;
+    if (!currentUser) return;
 
-            const start = new Date(date);
-            start.setHours(0, 0, 0, 0);
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
 
-            const end = new Date(date);
-            end.setHours(23, 59, 59, 999);
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
 
-            const dateKey = date.toISOString().split('T')[0];
+    const dateKey = date.toISOString().split('T')[0];
+    alert('📥 Загрузка истории для даты: ' + dateKey);
 
-            const cache = historyCache.get(dateKey);
-            const now = Date.now();
-            if (cache && now - cache.timestamp < CACHE_TTL) {
-                historyMap.set(dateKey, cache.data);
-                renderGroupsForDate(date);
-                return;
-            }
+    try {
+        const history = await apiFetch(
+            `/medicine-history/user/${currentUser.id}/period?start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`
+        );
+        const data = Array.isArray(history) ? history : [];
 
-            try {
-                const history = await apiFetch(
-                    `/medicine-history/user/${currentUser.id}/period?start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`
-                );
-                const data = Array.isArray(history) ? history : [];
+        alert('📊 Получено записей: ' + data.length +
+              '\nСтатусы: ' + data.map(h => h.status).join(', '));
 
-                console.log(`📊 Загружена история на ${dateKey}:`, data);
+        historyMap.set(dateKey, data);
+        historyCache.set(dateKey, { data, timestamp: Date.now() });
+        renderGroupsForDate(date);
+    } catch (err) {
+        alert('❌ Ошибка загрузки истории: ' + err.message);
+        console.warn('Ошибка загрузки истории', err);
+        renderGroupsForDate(date);
+    }
+}
 
-                historyMap.set(dateKey, data);
-                historyCache.set(dateKey, { data, timestamp: now });
-                renderGroupsForDate(date);
-            } catch (err) {
-                console.warn('Ошибка загрузки истории', err);
-                renderGroupsForDate(date);
-            }
-        }
+function getStatusForReminderOnDate(reminder, date) {
+    const dateKey = date.toISOString().split('T')[0];
+    const histories = historyMap.get(dateKey) || [];
+
+    alert('🔍 Поиск статуса для reminder ' + reminder.id +
+          ' в dateKey=' + dateKey +
+          ', всего записей: ' + histories.length);
+
+    histories.forEach((h, idx) => {
+        alert('  Запись ' + idx + ': reminderId=' + (h.reminder?.id) +
+              ', status=' + h.status);
+    });
+
+    const history = histories.find(h =>
+        h.reminder &&
+        String(h.reminder.id) === String(reminder.id)
+    );
+
+    if (!history) {
+        alert('⚠️ Нет истории для reminder ' + reminder.id);
+        return 'pending';
+    }
+
+    alert('✅ Найден статус: ' + history.status);
+    return (history.status || 'pending').toLowerCase();
+}
 
         function remindersForDate(date) {
             const dayOfWeek = date.getDay() === 0 ? 7 : date.getDay();
@@ -2695,9 +2717,19 @@ function optimisticPostponeReminder(reminderId, card) {
             return (history.status || 'pending').toLowerCase();
         }
 
-        function renderGroupsForDate(date) {
-            if (!contentDiv) return;
-            const filtered = remindersForDate(date);
+function renderGroupsForDate(date) {
+    if (!contentDiv) return;
+    const filtered = remindersForDate(date);
+
+    alert('📋 Рендер для даты: ' + date.toISOString().split('T')[0] +
+          ', напоминаний: ' + filtered.length);
+
+    filtered.forEach(r => {
+        const status = getStatusForReminderOnDate(r, date);
+        alert('💊 Препарат: ' + (r.medicine?.name || r.medicineId) +
+              ', статус: ' + status +
+              ', id: ' + r.id);
+    });
 
             const now = Date.now();
             const lastUpdate = localStorage.getItem('lastHistoryUpdate');
