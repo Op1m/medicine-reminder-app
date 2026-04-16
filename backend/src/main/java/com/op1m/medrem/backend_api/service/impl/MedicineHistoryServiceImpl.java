@@ -146,30 +146,30 @@ public MedicineHistory markAsSkipped(Long historyId) {
         OffsetDateTime endOfDay = startOfDay.plusDays(1).minusNanos(1);
 
         List<MedicineHistory> todayHistories = historyRepository.findByUserAndPeriod(reminder.getUser(), startOfDay, endOfDay);
-        MedicineHistory postponedHistory = todayHistories.stream()
+        MedicineHistory existingHistory = todayHistories.stream()
                 .filter(h -> h.getReminder().getId().equals(reminderId))
                 .findFirst()
                 .orElse(null);
 
-        if (postponedHistory == null) {
+        if (existingHistory != null && existingHistory.getStatus() == MedicineStatus.PENDING) {
+            existingHistory.setStatus(MedicineStatus.POSTPONED);
+            existingHistory.setNotes("Отложено на " + minutes + " минут");
+            historyRepository.save(existingHistory);
+        } else if (existingHistory == null) {
             OffsetDateTime scheduledTime = today.atTime(reminder.getReminderTime()).atOffset(ZoneOffset.UTC);
-            postponedHistory = new MedicineHistory(reminder, scheduledTime);
-            postponedHistory.setStatus(MedicineStatus.POSTPONED);
-            postponedHistory = historyRepository.save(postponedHistory);
-        } else {
-            if (postponedHistory.getStatus() == MedicineStatus.PENDING) {
-                postponedHistory.setStatus(MedicineStatus.POSTPONED);
-                postponedHistory = historyRepository.save(postponedHistory);
-            }
+            MedicineHistory newPostponed = new MedicineHistory(reminder, scheduledTime);
+            newPostponed.setStatus(MedicineStatus.POSTPONED);
+            newPostponed.setNotes("Отложено на " + minutes + " минут");
+            historyRepository.save(newPostponed);
         }
 
         OffsetDateTime newScheduledTime = OffsetDateTime.now(ZoneOffset.UTC).plusMinutes(minutes);
-        MedicineHistory reminderHistory = new MedicineHistory(reminder, newScheduledTime);
-        reminderHistory.setStatus(MedicineStatus.PENDING);
-        reminderHistory.setNotes("Повторное напоминание после откладывания");
-        historyRepository.save(reminderHistory);
+        MedicineHistory delayedReminder = new MedicineHistory(reminder, newScheduledTime);
+        delayedReminder.setStatus(MedicineStatus.PENDING);
+        delayedReminder.setNotes("Повторное напоминание после откладывания");
+        MedicineHistory savedDelayed = historyRepository.save(delayedReminder);
 
-        return postponedHistory;
+        return savedDelayed;
     }
 
     @Override
