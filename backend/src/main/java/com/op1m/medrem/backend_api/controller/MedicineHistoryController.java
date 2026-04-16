@@ -125,7 +125,7 @@ public class MedicineHistoryController {
             String username = authentication.getName();
             User user = userService.findByUsername(username);
 
-            MedicineHistory postpostponeReponed = medicineHistoryService.postponeReminder(
+            MedicineHistory postponed = medicineHistoryService.postponeReminder(
                     reminderId, user.getTelegramChatId(), minutes);
 
             return ResponseEntity.ok(DTOMapper.toMedicineHistoryDTO(postponed));
