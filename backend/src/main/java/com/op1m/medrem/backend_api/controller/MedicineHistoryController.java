@@ -117,7 +117,7 @@ public class MedicineHistoryController {
     }
 
     @PostMapping("/reminder/{reminderId}/postpone")
-    public ResponseEntity<?> postponeReminder(
+    public ResponseEntity<?> minder(
             @PathVariable Long reminderId,
             @RequestParam(defaultValue = "10") int minutes,
             Authentication authentication) {
@@ -125,8 +125,8 @@ public class MedicineHistoryController {
             String username = authentication.getName();
             User user = userService.findByUsername(username);
 
-            MedicineHistory postponed = medicineHistoryService.postponeReminder(
-                    reminderId, user.getTelegramId(), minutes);
+            MedicineHistory postpostponeReponed = medicineHistoryService.postponeReminder(
+                    reminderId, user.getTelegramChatId(), minutes);
 
             return ResponseEntity.ok(DTOMapper.toMedicineHistoryDTO(postponed));
         } catch (Exception e) {
