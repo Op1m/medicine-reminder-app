@@ -117,7 +117,7 @@ public class MedicineHistoryController {
     }
 
     @PostMapping("/reminder/{reminderId}/postpone")
-    public ResponseEntity<?> minder(
+    public ResponseEntity<?> postponeReminder(
             @PathVariable Long reminderId,
             @RequestParam(defaultValue = "10") int minutes,
             Authentication authentication) {
@@ -125,8 +125,20 @@ public class MedicineHistoryController {
             String username = authentication.getName();
             User user = userService.findByUsername(username);
 
+            System.out.println("═══════════════════════════════════════════════════");
+            System.out.println("🔄 [CONTROLLER] postponeReminder START");
+            System.out.println("   - reminderId: " + reminderId);
+            System.out.println("   - minutes: " + minutes);
+
             MedicineHistory postponed = medicineHistoryService.postponeReminder(
                     reminderId, user.getTelegramChatId(), minutes);
+
+            System.out.println("✅ [CONTROLLER] Created history:");
+            System.out.println("   - ID: " + postponed.getId());
+            System.out.println("   - Scheduled time: " + postponed.getScheduledTime());
+            System.out.println("   - Time as string: " + postponed.getScheduledTime().toString());
+            System.out.println("📦 [CONTROLLER] DTO scheduledTime: " + dto.getScheduledTime());
+            System.out.println("═══════════════════════════════════════════════════");
 
             return ResponseEntity.ok(DTOMapper.toMedicineHistoryDTO(postponed));
         } catch (Exception e) {
