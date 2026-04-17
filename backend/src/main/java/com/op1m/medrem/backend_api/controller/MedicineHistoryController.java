@@ -122,13 +122,13 @@ public class MedicineHistoryController {
             @RequestParam(defaultValue = "10") int minutes,
             Authentication authentication) {
         try {
-            String username = authentication.getName();
-            User user = userService.findByUsername(username);
-
             System.out.println("═══════════════════════════════════════════════════");
             System.out.println("🔄 [CONTROLLER] postponeReminder START");
             System.out.println("   - reminderId: " + reminderId);
             System.out.println("   - minutes: " + minutes);
+
+            String username = authentication.getName();
+            User user = userService.findByUsername(username);
 
             MedicineHistory postponed = medicineHistoryService.postponeReminder(
                     reminderId, user.getTelegramChatId(), minutes);
@@ -137,10 +137,30 @@ public class MedicineHistoryController {
             System.out.println("   - ID: " + postponed.getId());
             System.out.println("   - Scheduled time: " + postponed.getScheduledTime());
             System.out.println("   - Time as string: " + postponed.getScheduledTime().toString());
+
+            MedicineHistoryDTO dto = DTOMapper.toMedicineHistoryDTO(postponed);
+
+            // 🔥 ВАЖНО: Добавьте эти строки!
+            System.out.println("📦 [CONTROLLER] DTO created:");
+            System.out.println("   - DTO scheduledTime: " + dto.getScheduledTime());
+            System.out.println("   - DTO reminder.id: " + (dto.getReminder() != null ? dto.getReminder().getId() : "null"));
+            System.out.println("   - DTO status: " + dto.getStatus());
+
+            // 🔥 Также выведите полный JSON, который отправится клиенту
+            try {
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                String json = mapper.writeValueAsString(dto);
+                System.out.println("📦 [CONTROLLER] Full JSON response: " + json);
+            } catch (Exception e) {
+                System.out.println("⚠️ [CONTROLLER] Could not serialize DTO to JSON: " + e.getMessage());
+            }
+
             System.out.println("═══════════════════════════════════════════════════");
 
-            return ResponseEntity.ok(DTOMapper.toMedicineHistoryDTO(postponed));
+            return ResponseEntity.ok(dto);
         } catch (Exception e) {
+            System.err.println("❌ [CONTROLLER] ERROR: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
