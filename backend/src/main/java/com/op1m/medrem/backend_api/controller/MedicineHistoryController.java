@@ -137,7 +137,6 @@ public class MedicineHistoryController {
             System.out.println("   - ID: " + postponed.getId());
             System.out.println("   - Scheduled time: " + postponed.getScheduledTime());
             System.out.println("   - Time as string: " + postponed.getScheduledTime().toString());
-            System.out.println("📦 [CONTROLLER] DTO scheduledTime: " + dto.getScheduledTime());
             System.out.println("═══════════════════════════════════════════════════");
 
             return ResponseEntity.ok(DTOMapper.toMedicineHistoryDTO(postponed));
