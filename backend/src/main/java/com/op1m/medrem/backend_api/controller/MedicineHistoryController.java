@@ -116,54 +116,37 @@ public class MedicineHistoryController {
         }
     }
 
-    @PostMapping("/reminder/{reminderId}/postpone")
-    public ResponseEntity<?> postponeReminder(
-            @PathVariable Long reminderId,
-            @RequestParam(defaultValue = "10") int minutes,
-            Authentication authentication) {
-        try {
-            System.out.println("═══════════════════════════════════════════════════");
-            System.out.println("🔄 [CONTROLLER] postponeReminder START");
-            System.out.println("   - reminderId: " + reminderId);
-            System.out.println("   - minutes: " + minutes);
+@PostMapping("/reminder/{reminderId}/postpone")
+public ResponseEntity<?> postponeReminder(
+        @PathVariable Long reminderId,
+        @RequestParam(defaultValue = "10") int minutes,
+        Authentication authentication) {
+    try {
+        String username = authentication.getName();
+        User user = userService.findByUsername(username);
 
-            String username = authentication.getName();
-            User user = userService.findByUsername(username);
+        MedicineHistory postponed = medicineHistoryService.postponeReminder(
+                reminderId, user.getTelegramChatId(), minutes);
 
-            MedicineHistory postponed = medicineHistoryService.postponeReminder(
-                    reminderId, user.getTelegramChatId(), minutes);
+        // ВРЕМЕННЫЙ ОБХОД: возвращаем только нужные поля в Map
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", postponed.getId());
+        response.put("status", postponed.getStatus().toString());
+        response.put("scheduledTime", postponed.getScheduledTime().toString());
+        response.put("notes", postponed.getNotes());
 
-            System.out.println("✅ [CONTROLLER] Created history:");
-            System.out.println("   - ID: " + postponed.getId());
-            System.out.println("   - Scheduled time: " + postponed.getScheduledTime());
-            System.out.println("   - Time as string: " + postponed.getScheduledTime().toString());
-
-            MedicineHistoryDTO dto = DTOMapper.toMedicineHistoryDTO(postponed);
-
-            // 🔥 ВАЖНО: Добавьте эти строки!
-            System.out.println("📦 [CONTROLLER] DTO created:");
-            System.out.println("   - DTO scheduledTime: " + dto.getScheduledTime());
-            System.out.println("   - DTO reminder.id: " + (dto.getReminder() != null ? dto.getReminder().getId() : "null"));
-            System.out.println("   - DTO status: " + dto.getStatus());
-
-            // 🔥 Также выведите полный JSON, который отправится клиенту
-            try {
-                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                String json = mapper.writeValueAsString(dto);
-                System.out.println("📦 [CONTROLLER] Full JSON response: " + json);
-            } catch (Exception e) {
-                System.out.println("⚠️ [CONTROLLER] Could not serialize DTO to JSON: " + e.getMessage());
-            }
-
-            System.out.println("═══════════════════════════════════════════════════");
-
-            return ResponseEntity.ok(dto);
-        } catch (Exception e) {
-            System.err.println("❌ [CONTROLLER] ERROR: " + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        // Добавляем минимальную информацию о reminder
+        if (postponed.getReminder() != null) {
+            Map<String, Object> reminderMap = new HashMap<>();
+            reminderMap.put("id", postponed.getReminder().getId());
+            response.put("reminder", reminderMap);
         }
+
+        return ResponseEntity.ok(response);
+    } catch (Exception e) {
+        return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
     }
+}
 
     @PatchMapping("/{historyId}/mark-skipped")
     public ResponseEntity<MedicineHistoryDTO> markAsSkipped(@PathVariable Long historyId) {
